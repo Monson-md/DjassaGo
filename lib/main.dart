@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/caisse_provider.dart';
@@ -11,96 +13,220 @@ import 'providers/produit_provider.dart';
 import 'screens/accueil/accueil_screen.dart';
 import 'screens/accueil/onboarding_pays_screen.dart';
 import 'services/ad_service.dart';
+import 'services/diagnostic_service.dart';
 import 'services/hive_service.dart';
 import 'services/sync_service.dart';
 
-Future<void> main() async {
-  // Toute la séquence de démarrage est protégée : une exception non
-  // interceptée ici (avant le premier runApp) tue l'isolate principal
-  // sans aucun écran d'erreur, même en debug — l'app se ferme
-  // silencieusement. On capture donc explicitement Hive (bloquant et
-  // indispensable) et on affiche un écran d'erreur lisible plutôt que
-  // de laisser le processus mourir sans rien afficher.
-  runZonedGuarded<void>(() async {
+/// Point d'entrée de l'application.
+///
+/// Règle absolue : l'application ne doit jamais se fermer en silence au
+/// démarrage. `runApp` est appelé immédiatement (voir _AppRacine) ; toute
+/// initialisation lourde a lieu après le premier rendu, dans des étapes
+/// nommées et isolées les unes des autres. Si une étape critique (Hive)
+/// échoue, un écran de diagnostic lisible s'affiche à la place de l'app —
+/// jamais un retour silencieux au launcher.
+void main() {
+  runZonedGuarded<void>(() {
     WidgetsFlutterBinding.ensureInitialized();
 
-    Object? erreurDemarrage;
-    StackTrace? traceDemarrage;
-    try {
-      await HiveService.init();
-    } catch (e, st) {
-      erreurDemarrage = e;
-      traceDemarrage = st;
-      debugPrint('Erreur critique au démarrage (Hive) : $e\n$st');
-    }
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      DiagnosticService.ajouter(
+        'Flutter',
+        details.exceptionAsString(),
+        details.stack,
+      );
+    };
 
-    // Firebase et AdMob sont initialisés de façon non-bloquante : si le
-    // projet n'a pas encore été configuré (pas de google-services.json /
-    // GoogleService-Info.plist réels), l'application continue de
-    // fonctionner intégralement hors-ligne.
-    try {
-      await Firebase.initializeApp();
-    } catch (_) {
-      // Firebase non configuré : la synchronisation restera inactive
-      // jusqu'à ce qu'un projet Firebase soit branché (voir SyncService).
-    }
+    PlatformDispatcher.instance.onError = (error, stack) {
+      DiagnosticService.ajouter('Uncaught (PlatformDispatcher)', '$error', stack);
+      return true;
+    };
 
-    unawaited(AdService.instance.initialiser());
-    unawaited(SyncService().demarrer());
-
-    if (erreurDemarrage != null) {
-      runApp(_ErreurDemarrageApp(
-        erreur: erreurDemarrage,
-        stackTrace: traceDemarrage,
-      ));
-    } else {
-      runApp(const CaisseDePocheApp());
-    }
+    runApp(const _AppRacine());
   }, (error, stack) {
-    debugPrint('Erreur non interceptée : $error\n$stack');
+    DiagnosticService.ajouter('Uncaught (Zone)', '$error', stack);
   });
 }
 
-/// Écran affiché uniquement si l'initialisation locale (Hive) échoue.
-/// Sans cet écran, une erreur de démarrage ferme l'app sans rien
-/// afficher, ce qui est impossible à diagnostiquer sur un appareil réel.
-class _ErreurDemarrageApp extends StatelessWidget {
-  const _ErreurDemarrageApp({required this.erreur, this.stackTrace});
+/// Racine réelle de l'application : affiche un état de chargement
+/// instantané, puis pilote le démarrage étape par étape.
+class _AppRacine extends StatefulWidget {
+  const _AppRacine();
 
-  final Object? erreur;
-  final StackTrace? stackTrace;
+  @override
+  State<_AppRacine> createState() => _AppRacineState();
+}
+
+class _AppRacineState extends State<_AppRacine> {
+  bool _hivePret = false;
+  bool _hiveEnErreur = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _demarrer();
+  }
+
+  Future<void> _demarrer() async {
+    setState(() {
+      _hivePret = false;
+      _hiveEnErreur = false;
+    });
+
+    // Seule étape bloquante : les Provider ci-dessous lisent des boxes
+    // Hive dès leur construction, donc Hive doit être prêt avant
+    // d'afficher l'app. C'est volontairement la seule étape critique.
+    try {
+      await HiveService.init();
+    } catch (e, st) {
+      DiagnosticService.ajouter('Hive.init', '$e', st);
+      unawaited(DiagnosticService.sauvegarderSurDisque());
+      if (!mounted) return;
+      setState(() => _hiveEnErreur = true);
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _hivePret = true);
+
+    // Étapes non critiques : jamais avant le premier rendu (certains SDK
+    // natifs, notamment Google Mobile Ads, peuvent se comporter de façon
+    // instable si on les sollicite avant que le moteur Flutter ait
+    // affiché sa première frame). addPostFrameCallback garantit qu'au
+    // moins une frame a déjà été peinte.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initialiserEnArrierePlan());
+  }
+
+  Future<void> _initialiserEnArrierePlan() async {
+    try {
+      await Firebase.initializeApp();
+    } catch (e, st) {
+      // Firebase non configuré (pas de firebase_options.dart) : la
+      // synchronisation reste inactive, l'app continue hors-ligne.
+      DiagnosticService.ajouter('Firebase.initializeApp', '$e', st);
+    }
+
+    try {
+      await AdService.instance.initialiser();
+    } catch (e, st) {
+      DiagnosticService.ajouter('AdMob', '$e', st);
+    }
+
+    try {
+      unawaited(SyncService().demarrer());
+    } catch (e, st) {
+      DiagnosticService.ajouter('SyncService.demarrer', '$e', st);
+    }
+
+    unawaited(DiagnosticService.sauvegarderSurDisque());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hiveEnErreur) {
+      return _EcranDiagnostic(
+        rapport: DiagnosticService.rapportComplet(),
+        onContinuerQuandMeme: _demarrer,
+      );
+    }
+    if (!_hivePret) {
+      return const _EcranChargement();
+    }
+    return const CaisseDePocheApp();
+  }
+}
+
+class _EcranChargement extends StatelessWidget {
+  const _EcranChargement();
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Color(0xFFFCFAF5),
+        body: Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+}
+
+/// Écran affiché uniquement si une étape critique du démarrage (Hive)
+/// échoue. Sans cet écran, l'échec fermerait l'app sans rien afficher,
+/// ce qui est impossible à diagnostiquer sur un appareil réel sans
+/// logcat. Le rapport est sélectionnable et copiable pour être transmis
+/// tel quel.
+class _EcranDiagnostic extends StatelessWidget {
+  const _EcranDiagnostic({
+    required this.rapport,
+    required this.onContinuerQuandMeme,
+  });
+
+  final String rapport;
+  final VoidCallback onContinuerQuandMeme;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: Colors.red.shade50,
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
                   "Erreur au démarrage de l'application",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 const Text(
-                  "Les données locales n'ont pas pu être chargées. "
-                  'Redémarrez l\'application. Si le problème persiste, '
-                  'contactez le support avec le message ci-dessous.',
+                  "Les données locales n'ont pas pu être chargées. Copiez "
+                  'le rapport ci-dessous et transmettez-le pour le corriger.',
+                  style: TextStyle(color: Colors.black87),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: SingleChildScrollView(
-                    child: Text(
-                      '$erreur\n\n$stackTrace',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                    child: SelectableText(
+                      rapport,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: rapport));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Rapport copié')),
+                          );
+                        },
+                        child: const Text('Copier le rapport'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: onContinuerQuandMeme,
+                        child: const Text('Continuer quand même'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -17,4 +17,11 @@ class ParametresKeys {
   static const String devisePrincipale = 'devise_principale';
   static const String paysCode = 'pays_code';
   static const String paysNom = 'pays_nom';
+
+  /// Version du schéma Hive attendue par le code actuel. Comparée à la
+  /// valeur stockée à chaque démarrage (voir HiveService.init) : en cas
+  /// de désaccord, les boxes de données locales sont effacées plutôt que
+  /// de risquer une erreur de cast au premier accès à un champ dont le
+  /// type a changé entre deux versions de l'app.
+  static const String schemaVersion = 'schema_version';
 }

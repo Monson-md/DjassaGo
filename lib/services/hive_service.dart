@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../config/hive_boxes.dart';
@@ -15,6 +16,10 @@ class HiveService {
 
   static bool _initialise = false;
 
+  /// Incrémenter cette valeur à chaque changement incompatible du schéma
+  /// Hive (ex: un champ qui change de type). Voir ParametresKeys.schemaVersion.
+  static const int schemaVersion = 1;
+
   static Future<void> init() async {
     if (_initialise) return;
 
@@ -27,12 +32,33 @@ class HiveService {
     _registerAdapterSiAbsent(4, StatutDetteAdapter());
     _registerAdapterSiAbsent(5, DetteAdapter());
 
+    // La box de paramètres est ouverte en premier et seule : elle stocke
+    // des types primitifs (bool/String/int), jamais d'objets Hive
+    // personnalisés, donc son ouverture ne peut pas échouer à cause d'un
+    // schéma incompatible sur Produit/Transaction/Dette/Devise.
+    final parametresBox = await Hive.openBox(HiveBoxes.parametres);
+    final versionStockee =
+        parametresBox.get(ParametresKeys.schemaVersion) as int?;
+    if (versionStockee != null && versionStockee != schemaVersion) {
+      // Schéma incompatible avec une version antérieure de l'app (ex:
+      // un champ passé de double à int) : plutôt que de risquer une
+      // exception de cast à la première lecture, on repart propre.
+      // Acceptable ici : l'app n'a pas encore d'utilisateurs réels.
+      debugPrint(
+          'HiveService: schéma incompatible ($versionStockee -> $schemaVersion), '
+          'réinitialisation des boxes de données locales.');
+      await Hive.deleteBoxFromDisk(HiveBoxes.produits);
+      await Hive.deleteBoxFromDisk(HiveBoxes.transactions);
+      await Hive.deleteBoxFromDisk(HiveBoxes.dettes);
+      await Hive.deleteBoxFromDisk(HiveBoxes.devises);
+    }
+    await parametresBox.put(ParametresKeys.schemaVersion, schemaVersion);
+
     await Future.wait([
       Hive.openBox<Produit>(HiveBoxes.produits),
       Hive.openBox<model.Transaction>(HiveBoxes.transactions),
       Hive.openBox<Dette>(HiveBoxes.dettes),
       Hive.openBox<Devise>(HiveBoxes.devises),
-      Hive.openBox(HiveBoxes.parametres),
     ]);
 
     _initialise = true;
