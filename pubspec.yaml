@@ -101,25 +101,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-
-  # Polices embarquées localement (app 100% hors-ligne : jamais de
-  # téléchargement à l'exécution via google_fonts). Ce sont des polices
-  # variables : le même fichier .ttf est déclaré sous plusieurs graisses,
-  # Flutter/Skia sélectionne l'instance correspondante sur l'axe wght.
-  fonts:
-    - family: BricolageGrotesque
-      fonts:
-        - asset: assets/fonts/BricolageGrotesque-Variable.ttf
-          weight: 700
-        - asset: assets/fonts/BricolageGrotesque-Variable.ttf
-          weight: 800
-    - family: Inter
-      fonts:
-        - asset: assets/fonts/Inter-Variable.ttf
-          weight: 400
-        - asset: assets/fonts/Inter-Variable.ttf
-          weight: 500
-        - asset: assets/fonts/Inter-Variable.ttf
-          weight: 600
-        - asset: assets/fonts/Inter-Variable.ttf
-          weight: 700
