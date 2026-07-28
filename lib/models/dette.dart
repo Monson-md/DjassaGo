@@ -1,5 +1,8 @@
 import 'package:hive/hive.dart';
 
+import '../utils/devises_disponibles.dart';
+import '../utils/money.dart';
+
 part 'dette.g.dart';
 
 @HiveType(typeId: 4)
@@ -44,6 +47,15 @@ class Dette extends HiveObject {
   @HiveField(9)
   bool synchronise;
 
+  /// Montants en unités mineures de la devise (lib/utils/money.dart).
+  /// Valeur par défaut 0 pour les dettes enregistrées avant l'introduction
+  /// de ce champ.
+  @HiveField(10, defaultValue: 0)
+  int montantDuMineur;
+
+  @HiveField(11, defaultValue: 0)
+  int montantInitialMineur;
+
   Dette({
     required this.id,
     required this.nomClient,
@@ -55,7 +67,22 @@ class Dette extends HiveObject {
     double? montantInitial,
     this.note,
     this.synchronise = false,
-  }) : montantInitial = montantInitial ?? montantDu;
+    int? montantDuMineur,
+    int? montantInitialMineur,
+  })  : montantInitial = montantInitial ?? montantDu,
+        montantDuMineur = montantDuMineur ??
+            versUnitesMineures(montantDu, decimalesPourCodeIso(devise)),
+        montantInitialMineur = montantInitialMineur ??
+            versUnitesMineures(
+                montantInitial ?? montantDu, decimalesPourCodeIso(devise));
+
+  /// Met à jour le montant dû en gardant le champ en unités mineures
+  /// synchronisé. À utiliser à la place d'une affectation directe de
+  /// [montantDu].
+  void definirMontantDu(double montant) {
+    montantDu = montant;
+    montantDuMineur = versUnitesMineures(montant, decimalesPourCodeIso(devise));
+  }
 
   Map<String, dynamic> toMap() {
     return {

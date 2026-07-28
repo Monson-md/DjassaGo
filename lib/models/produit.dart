@@ -1,5 +1,8 @@
 import 'package:hive/hive.dart';
 
+import '../utils/devises_disponibles.dart';
+import '../utils/money.dart';
+
 part 'produit.g.dart';
 
 @HiveType(typeId: 1)
@@ -31,6 +34,17 @@ class Produit extends HiveObject {
   @HiveField(8)
   bool synchronise;
 
+  /// Prix d'achat en unités mineures de la devise (voir lib/utils/money.dart).
+  /// Source de vérité pour tout nouveau calcul : évite les erreurs
+  /// d'arrondi flottant accumulées sur [prixAchat]. Les enregistrements
+  /// créés avant l'introduction de ce champ ont une valeur par défaut de
+  /// 0 ; [prixAchat] reste donc conservé et ne doit jamais être supprimé.
+  @HiveField(9, defaultValue: 0)
+  int prixAchatMineur;
+
+  @HiveField(10, defaultValue: 0)
+  int prixVenteMineur;
+
   Produit({
     required this.id,
     required this.nom,
@@ -41,7 +55,24 @@ class Produit extends HiveObject {
     DateTime? dateCreation,
     this.dateModification,
     this.synchronise = false,
-  }) : dateCreation = dateCreation ?? DateTime.now();
+    int? prixAchatMineur,
+    int? prixVenteMineur,
+  })  : dateCreation = dateCreation ?? DateTime.now(),
+        prixAchatMineur = prixAchatMineur ??
+            versUnitesMineures(prixAchat, decimalesPourCodeIso(devise)),
+        prixVenteMineur = prixVenteMineur ??
+            versUnitesMineures(prixVente, decimalesPourCodeIso(devise));
+
+  /// Met à jour les prix d'achat et de vente en gardant les champs en
+  /// unités mineures synchronisés. À utiliser à la place d'une affectation
+  /// directe de [prixAchat]/[prixVente].
+  void definirPrix({required double prixAchat, required double prixVente}) {
+    this.prixAchat = prixAchat;
+    this.prixVente = prixVente;
+    final decimales = decimalesPourCodeIso(devise);
+    prixAchatMineur = versUnitesMineures(prixAchat, decimales);
+    prixVenteMineur = versUnitesMineures(prixVente, decimales);
+  }
 
   double get margeUnitaire => prixVente - prixAchat;
 

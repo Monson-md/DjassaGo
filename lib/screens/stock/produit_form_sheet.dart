@@ -60,8 +60,7 @@ class _ProduitFormSheetState extends State<ProduitFormSheet> {
     if (_modeEdition) {
       final p = widget.produit!;
       p.nom = _nomController.text.trim();
-      p.prixAchat = prixAchat;
-      p.prixVente = prixVente;
+      p.definirPrix(prixAchat: prixAchat, prixVente: prixVente);
       p.stockActuel = stock;
       await provider.modifier(p);
     } else {

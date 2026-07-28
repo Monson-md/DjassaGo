@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/produit.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/produit_provider.dart';
-import '../../utils/formatage.dart';
+import '../../utils/money.dart';
 import 'produit_form_sheet.dart';
 
 /// Gestion du stock : liste des produits, ajout, modification et
@@ -50,7 +50,7 @@ class StockScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final produits = context.watch<ProduitProvider>().produits;
-    final devise = context.watch<CurrencyProvider>().symboleDevise;
+    final devise = context.watch<CurrencyProvider>().devise;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Stock')),
@@ -72,8 +72,8 @@ class StockScreen extends StatelessWidget {
                   onTap: () => _ouvrirFormulaire(context, produit: produit),
                   title: Text(produit.nom),
                   subtitle: Text(
-                    'Achat: ${formaterMontant(produit.prixAchat, symbole: devise)} · '
-                    'Vente: ${formaterMontant(produit.prixVente, symbole: devise)}',
+                    'Achat: ${formaterMontantMineur(produit.prixAchatMineur, decimales: devise.decimales, symbole: devise.symbole)} · '
+                    'Vente: ${formaterMontantMineur(produit.prixVenteMineur, decimales: devise.decimales, symbole: devise.symbole)}',
                   ),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

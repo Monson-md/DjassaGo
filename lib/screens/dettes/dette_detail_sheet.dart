@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/dette.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/dette_provider.dart';
-import '../../utils/formatage.dart';
+import '../../utils/money.dart';
 
 /// Détail d'une dette : aperçu du message de relance et actions rapides
 /// (WhatsApp, SMS, enregistrement d'un paiement).
@@ -56,7 +56,7 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final devise = context.watch<CurrencyProvider>().symboleDevise;
+    final devise = context.watch<CurrencyProvider>().devise;
     final message = context.read<DetteProvider>().genererMessageRelance(widget.dette);
 
     return SafeArea(
@@ -75,7 +75,7 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
-              'Montant dû : ${formaterMontant(widget.dette.montantDu, symbole: devise)}',
+              'Montant dû : ${formaterMontantMineur(widget.dette.montantDuMineur, decimales: devise.decimales, symbole: devise.symbole)}',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 16),
@@ -120,7 +120,7 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
                         const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
                       labelText: 'Montant reçu',
-                      suffixText: devise,
+                      suffixText: devise.symbole,
                     ),
                   ),
                 ),

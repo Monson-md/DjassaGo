@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/transaction.dart' as model;
 import '../../providers/caisse_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/produit_provider.dart';
-import '../../utils/formatage.dart';
+import '../../utils/money.dart';
 
 /// Contenu du panier avant validation de la vente.
 /// Renvoie `true` via Navigator.pop si une vente a été finalisée.
@@ -28,7 +29,7 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
       if (!mounted) return;
       context.read<ProduitProvider>().charger();
       Navigator.of(context).pop(true);
-      _afficherRecu(transaction.montantTotal, transaction.beneficeNet);
+      _afficherRecu(transaction);
     } catch (e) {
       setState(() => _validationEnCours = false);
       if (!mounted) return;
@@ -38,8 +39,8 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
     }
   }
 
-  void _afficherRecu(double total, double benefice) {
-    final devise = context.read<CurrencyProvider>().symboleDevise;
+  void _afficherRecu(model.Transaction transaction) {
+    final devise = context.read<CurrencyProvider>().devise;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -48,9 +49,17 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Total encaissé : ${formaterMontant(total, symbole: devise)}'),
+            Text('Total encaissé : ${formaterMontantMineur(
+              transaction.montantTotalMineur,
+              decimales: devise.decimales,
+              symbole: devise.symbole,
+            )}'),
             const SizedBox(height: 4),
-            Text('Bénéfice net : ${formaterMontant(benefice, symbole: devise)}'),
+            Text('Bénéfice net : ${formaterMontantMineur(
+              transaction.beneficeNetMineur,
+              decimales: devise.decimales,
+              symbole: devise.symbole,
+            )}'),
           ],
         ),
         actions: [
@@ -66,7 +75,7 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final caisse = context.watch<CaisseProvider>();
-    final devise = context.watch<CurrencyProvider>().symboleDevise;
+    final devise = context.watch<CurrencyProvider>().devise;
     final panier = caisse.panier;
 
     return SafeArea(
@@ -110,7 +119,12 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
                         contentPadding: EdgeInsets.zero,
                         title: Text(item.nomProduit),
                         subtitle: Text(
-                          formaterMontant(item.prixUnitaireVente, symbole: devise),
+                          formaterMontantMineur(
+                            versUnitesMineures(
+                                item.prixUnitaireVente, devise.decimales),
+                            decimales: devise.decimales,
+                            symbole: devise.symbole,
+                          ),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -142,7 +156,12 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
                         children: [
                           const Text('Total', style: TextStyle(fontSize: 16)),
                           Text(
-                            formaterMontant(caisse.totalPanier, symbole: devise),
+                            formaterMontantMineur(
+                              versUnitesMineures(
+                                  caisse.totalPanier, devise.decimales),
+                              decimales: devise.decimales,
+                              symbole: devise.symbole,
+                            ),
                             style: const TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.bold),
                           ),

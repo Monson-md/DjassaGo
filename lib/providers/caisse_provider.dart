@@ -27,6 +27,10 @@ class CaisseProvider extends ChangeNotifier {
 
   double beneficeNetDuJour() => _service.beneficeNetDuJour();
 
+  int totalDuJourMineur() => _service.totalDuJourMineur();
+
+  int beneficeNetDuJourMineur() => _service.beneficeNetDuJourMineur();
+
   List<model.Transaction> transactionsDuJour() => _service.transactionsDuJour();
 
   void ajouterAuPanier(Produit produit, {int quantite = 1}) {

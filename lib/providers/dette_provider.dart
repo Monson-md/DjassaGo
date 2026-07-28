@@ -14,6 +14,8 @@ class DetteProvider extends ChangeNotifier {
 
   double get totalEnCours => _service.totalDettesEnCours();
 
+  int get totalEnCoursMineur => _service.totalDettesEnCoursMineur();
+
   DetteProvider() {
     charger();
   }

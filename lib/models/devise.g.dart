@@ -22,13 +22,14 @@ class DeviseAdapter extends TypeAdapter<Devise> {
       nom: fields[2] as String,
       codeIso: fields[3] as String,
       codePays: fields[4] as String,
+      decimales: fields[5] == null ? 2 : fields[5] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, Devise obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class DeviseAdapter extends TypeAdapter<Devise> {
       ..writeByte(3)
       ..write(obj.codeIso)
       ..writeByte(4)
-      ..write(obj.codePays);
+      ..write(obj.codePays)
+      ..writeByte(5)
+      ..write(obj.decimales);
   }
 
   @override

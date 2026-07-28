@@ -5,6 +5,7 @@ import '../../models/dette.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/dette_provider.dart';
 import '../../utils/formatage.dart';
+import '../../utils/money.dart';
 import 'dette_detail_sheet.dart';
 import 'dette_form_sheet.dart';
 
@@ -38,8 +39,8 @@ class DettesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dettes = context.watch<DetteProvider>().dettesEnCours;
-    final total = context.watch<DetteProvider>().totalEnCours;
-    final devise = context.watch<CurrencyProvider>().symboleDevise;
+    final totalMineur = context.watch<DetteProvider>().totalEnCoursMineur;
+    final devise = context.watch<CurrencyProvider>().devise;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Carnet de dettes')),
@@ -60,7 +61,8 @@ class DettesScreen extends StatelessWidget {
                     style: TextStyle(color: Colors.red)),
                 const SizedBox(height: 4),
                 Text(
-                  formaterMontant(total, symbole: devise),
+                  formaterMontantMineur(totalMineur,
+                      decimales: devise.decimales, symbole: devise.symbole),
                   style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -101,7 +103,9 @@ class DettesScreen extends StatelessWidget {
                           '${dette.telephone} · ${formaterDate(dette.dateDette)}',
                         ),
                         trailing: Text(
-                          formaterMontant(dette.montantDu, symbole: devise),
+                          formaterMontantMineur(dette.montantDuMineur,
+                              decimales: devise.decimales,
+                              symbole: devise.symbole),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       );

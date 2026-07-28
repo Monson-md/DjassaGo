@@ -24,13 +24,15 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       beneficeNet: fields[4] as double,
       devise: fields[5] as String,
       synchronise: fields[6] as bool,
+      montantTotalMineur: fields[7] == null ? 0 : fields[7] as int?,
+      beneficeNetMineur: fields[8] == null ? 0 : fields[8] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(5)
       ..write(obj.devise)
       ..writeByte(6)
-      ..write(obj.synchronise);
+      ..write(obj.synchronise)
+      ..writeByte(7)
+      ..write(obj.montantTotalMineur)
+      ..writeByte(8)
+      ..write(obj.beneficeNetMineur);
   }
 
   @override

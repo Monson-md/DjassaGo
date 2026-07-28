@@ -6,7 +6,8 @@ import '../../providers/caisse_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/produit_provider.dart';
 import '../../services/ad_service.dart';
-import '../../utils/formatage.dart';
+import '../../utils/devises_disponibles.dart';
+import '../../utils/money.dart';
 import 'panier_bottom_sheet.dart';
 
 /// Écran de Caisse : cœur de l'application.
@@ -48,7 +49,7 @@ class _CaisseScreenState extends State<CaisseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final devise = context.watch<CurrencyProvider>().symboleDevise;
+    final devise = context.watch<CurrencyProvider>().devise;
     final produits = context.watch<ProduitProvider>().produits;
     final caisse = context.watch<CaisseProvider>();
 
@@ -118,14 +119,18 @@ class _CaisseScreenState extends State<CaisseScreen> {
                 label: Text('${caisse.nombreArticlesPanier}'),
                 child: const Icon(Icons.shopping_cart),
               ),
-              label: Text(formaterMontant(caisse.totalPanier, symbole: devise)),
+              label: Text(formaterMontantMineur(
+                versUnitesMineures(caisse.totalPanier, devise.decimales),
+                decimales: devise.decimales,
+                symbole: devise.symbole,
+              )),
             ),
     );
   }
 }
 
 class _StatsDuJour extends StatelessWidget {
-  final String devise;
+  final InfoDevise devise;
   const _StatsDuJour({required this.devise});
 
   @override
@@ -138,7 +143,11 @@ class _StatsDuJour extends StatelessWidget {
           Expanded(
             child: _CarteStat(
               titre: "Ventes aujourd'hui",
-              valeur: formaterMontant(caisse.totalDuJour(), symbole: devise),
+              valeur: formaterMontantMineur(
+                caisse.totalDuJourMineur(),
+                decimales: devise.decimales,
+                symbole: devise.symbole,
+              ),
               couleur: Colors.teal,
               icone: Icons.point_of_sale,
             ),
@@ -147,8 +156,11 @@ class _StatsDuJour extends StatelessWidget {
           Expanded(
             child: _CarteStat(
               titre: 'Bénéfice net',
-              valeur:
-                  formaterMontant(caisse.beneficeNetDuJour(), symbole: devise),
+              valeur: formaterMontantMineur(
+                caisse.beneficeNetDuJourMineur(),
+                decimales: devise.decimales,
+                symbole: devise.symbole,
+              ),
               couleur: Colors.indigo,
               icone: Icons.trending_up,
             ),
@@ -213,7 +225,7 @@ class _CarteStat extends StatelessWidget {
 
 class _CarteProduit extends StatelessWidget {
   final Produit produit;
-  final String devise;
+  final InfoDevise devise;
 
   const _CarteProduit({required this.produit, required this.devise});
 
@@ -245,7 +257,11 @@ class _CarteProduit extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    formaterMontant(produit.prixVente, symbole: devise),
+                    formaterMontantMineur(
+                      produit.prixVenteMineur,
+                      decimales: devise.decimales,
+                      symbole: devise.symbole,
+                    ),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,

@@ -3,6 +3,8 @@ import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/dette.dart';
+import '../utils/devises_disponibles.dart';
+import '../utils/money.dart';
 import 'hive_service.dart';
 
 /// Gère le carnet de dettes : CRUD, paiements, et génération de messages
@@ -48,11 +50,15 @@ class DetteService {
 
   Future<void> enregistrerPaiement(Dette dette, double montantPaye) async {
     final nouveauMontant = dette.montantDu - montantPaye;
-    dette.montantDu = nouveauMontant <= 0 ? 0 : nouveauMontant;
+    dette.definirMontantDu(nouveauMontant <= 0 ? 0 : nouveauMontant);
     dette.statut = dette.montantDu <= 0
         ? StatutDette.payee
         : StatutDette.partiellementPayee;
     await dette.save();
+  }
+
+  int totalDettesEnCoursMineur() {
+    return listerEnCours().fold<int>(0, (s, d) => s + d.montantDuMineur);
   }
 
   Future<void> supprimer(String id) async {
@@ -61,9 +67,11 @@ class DetteService {
 
   /// Génère un message de relance formaté et personnalisé pour une dette.
   String genererMessageRelance(Dette dette, {String nomCommerce = 'notre boutique'}) {
-    final formateurMontant = NumberFormat.decimalPattern('fr_FR');
     final formateurDate = DateFormat('dd/MM/yyyy');
-    final montant = formateurMontant.format(dette.montantDu);
+    final montant = formaterMontantMineur(
+      dette.montantDuMineur,
+      decimales: decimalesPourCodeIso(dette.devise),
+    );
     final date = formateurDate.format(dette.dateDette);
 
     return 'Bonjour ${dette.nomClient}, '
