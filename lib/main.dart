@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -90,27 +89,19 @@ class _AppRacineState extends State<_AppRacine> {
     if (!mounted) return;
     setState(() => _hivePret = true);
 
-    // Étapes non critiques : jamais avant le premier rendu (certains SDK
-    // natifs, notamment Google Mobile Ads, peuvent se comporter de façon
-    // instable si on les sollicite avant que le moteur Flutter ait
-    // affiché sa première frame). addPostFrameCallback garantit qu'au
-    // moins une frame a déjà été peinte.
+    // Étapes non critiques, différées après le premier rendu. AdService
+    // et SyncService sont aujourd'hui des implémentations neutres (voir
+    // CHECKLIST.md : Firebase et Google Mobile Ads ont été retirés du
+    // projet), mais la structure est conservée pour qu'une vraie
+    // implémentation puisse être réintroduite sans changer ce fichier.
     WidgetsBinding.instance.addPostFrameCallback((_) => _initialiserEnArrierePlan());
   }
 
   Future<void> _initialiserEnArrierePlan() async {
     try {
-      await Firebase.initializeApp();
-    } catch (e, st) {
-      // Firebase non configuré (pas de firebase_options.dart) : la
-      // synchronisation reste inactive, l'app continue hors-ligne.
-      DiagnosticService.ajouter('Firebase.initializeApp', '$e', st);
-    }
-
-    try {
       await AdService.instance.initialiser();
     } catch (e, st) {
-      DiagnosticService.ajouter('AdMob', '$e', st);
+      DiagnosticService.ajouter('AdService', '$e', st);
     }
 
     try {

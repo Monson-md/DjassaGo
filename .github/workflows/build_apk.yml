@@ -24,12 +24,22 @@ jobs:
 
       - run: flutter build apk --debug
 
-      - run: flutter build apk --release
-
       - uses: actions/upload-artifact@v4
         with:
           name: caisse-de-poche-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+
+      # Point d'entrée minimal (aucun Hive, aucun service, aucun accès
+      # disque) : sert uniquement à distinguer un crash natif d'un crash
+      # dans l'initialisation Dart. Voir lib/main_minimal.dart.
+      - run: flutter build apk --debug -t lib/main_minimal.dart
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caisse-de-poche-minimal-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+      - run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
         with:

@@ -36,7 +36,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
     if (!mounted) return;
     setState(() => _synchronisationEnCours = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Synchronisation effectuée (si connecté)')),
+      const SnackBar(content: Text('Synchronisation cloud non configurée pour le moment')),
     );
   }
 
@@ -94,7 +94,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
   }
 
   Future<void> _importer() async {
-    final resultat = await FilePicker.platform.pickFiles(
+    final resultat = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
     );
@@ -246,7 +246,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
               leading: const Icon(Icons.cloud_sync),
               title: const Text('Synchronisation cloud'),
               subtitle: const Text(
-                'Vos données sont sauvegardées automatiquement dès qu\'une connexion est disponible.',
+                "Non configurée. L'app fonctionne 100 % hors-ligne — utilisez l'export/import ci-dessus.",
               ),
               trailing: _synchronisationEnCours
                   ? const SizedBox(
