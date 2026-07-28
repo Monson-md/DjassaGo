@@ -74,4 +74,33 @@ class Transaction extends HiveObject {
           .toList(),
     };
   }
+
+  /// Sérialisation complète et sans perte pour l'export/import de
+  /// sauvegarde (lib/services/backup_service.dart) — distincte de
+  /// [toMap] qui ne sert qu'à la synchronisation Firestore.
+  Map<String, dynamic> versJson() => {
+        'id': id,
+        'date': date.toIso8601String(),
+        'itemsVendus': itemsVendus.map((i) => i.versJson()).toList(),
+        'montantTotal': montantTotal,
+        'beneficeNet': beneficeNet,
+        'devise': devise,
+        'synchronise': synchronise,
+        'montantTotalMineur': montantTotalMineur,
+        'beneficeNetMineur': beneficeNetMineur,
+      };
+
+  factory Transaction.depuisJson(Map<String, dynamic> json) => Transaction(
+        id: json['id'] as String,
+        date: DateTime.parse(json['date'] as String),
+        itemsVendus: (json['itemsVendus'] as List)
+            .map((i) => ItemVendu.depuisJson(i as Map<String, dynamic>))
+            .toList(),
+        montantTotal: (json['montantTotal'] as num).toDouble(),
+        beneficeNet: (json['beneficeNet'] as num).toDouble(),
+        devise: json['devise'] as String,
+        synchronise: json['synchronise'] as bool? ?? false,
+        montantTotalMineur: json['montantTotalMineur'] as int?,
+        beneficeNetMineur: json['beneficeNetMineur'] as int?,
+      );
 }

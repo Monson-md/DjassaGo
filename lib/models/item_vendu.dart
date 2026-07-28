@@ -48,4 +48,27 @@ class ItemVendu extends HiveObject {
 
   int get beneficeMineur =>
       (prixUnitaireVenteMineur - prixUnitaireAchatMineur) * quantite;
+
+  /// Sérialisation complète et sans perte pour l'export/import de
+  /// sauvegarde (lib/services/backup_service.dart) — distincte de
+  /// [Transaction.toMap] qui ne sert qu'à la synchronisation Firestore.
+  Map<String, dynamic> versJson() => {
+        'produitId': produitId,
+        'nomProduit': nomProduit,
+        'quantite': quantite,
+        'prixUnitaireVente': prixUnitaireVente,
+        'prixUnitaireAchat': prixUnitaireAchat,
+        'prixUnitaireVenteMineur': prixUnitaireVenteMineur,
+        'prixUnitaireAchatMineur': prixUnitaireAchatMineur,
+      };
+
+  factory ItemVendu.depuisJson(Map<String, dynamic> json) => ItemVendu(
+        produitId: json['produitId'] as String,
+        nomProduit: json['nomProduit'] as String,
+        quantite: json['quantite'] as int,
+        prixUnitaireVente: (json['prixUnitaireVente'] as num).toDouble(),
+        prixUnitaireAchat: (json['prixUnitaireAchat'] as num).toDouble(),
+        prixUnitaireVenteMineur: json['prixUnitaireVenteMineur'] as int? ?? 0,
+        prixUnitaireAchatMineur: json['prixUnitaireAchatMineur'] as int? ?? 0,
+      );
 }

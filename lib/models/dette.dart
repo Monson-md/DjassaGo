@@ -97,4 +97,37 @@ class Dette extends HiveObject {
       'note': note,
     };
   }
+
+  /// Sérialisation complète et sans perte pour l'export/import de
+  /// sauvegarde (lib/services/backup_service.dart) — distincte de
+  /// [toMap] qui ne sert qu'à la synchronisation Firestore.
+  Map<String, dynamic> versJson() => {
+        'id': id,
+        'nomClient': nomClient,
+        'telephone': telephone,
+        'montantDu': montantDu,
+        'dateDette': dateDette.toIso8601String(),
+        'statut': statut.name,
+        'devise': devise,
+        'montantInitial': montantInitial,
+        'note': note,
+        'synchronise': synchronise,
+        'montantDuMineur': montantDuMineur,
+        'montantInitialMineur': montantInitialMineur,
+      };
+
+  factory Dette.depuisJson(Map<String, dynamic> json) => Dette(
+        id: json['id'] as String,
+        nomClient: json['nomClient'] as String,
+        telephone: json['telephone'] as String,
+        montantDu: (json['montantDu'] as num).toDouble(),
+        dateDette: DateTime.parse(json['dateDette'] as String),
+        statut: StatutDette.values.byName(json['statut'] as String),
+        devise: json['devise'] as String,
+        montantInitial: (json['montantInitial'] as num?)?.toDouble(),
+        note: json['note'] as String?,
+        synchronise: json['synchronise'] as bool? ?? false,
+        montantDuMineur: json['montantDuMineur'] as int?,
+        montantInitialMineur: json['montantInitialMineur'] as int?,
+      );
 }

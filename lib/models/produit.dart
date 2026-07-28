@@ -92,4 +92,37 @@ class Produit extends HiveObject {
       'dateModification': dateModification?.toIso8601String(),
     };
   }
+
+  /// Sérialisation complète et sans perte pour l'export/import de
+  /// sauvegarde (lib/services/backup_service.dart) — distincte de
+  /// [toMap] qui ne sert qu'à la synchronisation Firestore.
+  Map<String, dynamic> versJson() => {
+        'id': id,
+        'nom': nom,
+        'prixAchat': prixAchat,
+        'prixVente': prixVente,
+        'stockActuel': stockActuel,
+        'devise': devise,
+        'dateCreation': dateCreation.toIso8601String(),
+        'dateModification': dateModification?.toIso8601String(),
+        'synchronise': synchronise,
+        'prixAchatMineur': prixAchatMineur,
+        'prixVenteMineur': prixVenteMineur,
+      };
+
+  factory Produit.depuisJson(Map<String, dynamic> json) => Produit(
+        id: json['id'] as String,
+        nom: json['nom'] as String,
+        prixAchat: (json['prixAchat'] as num).toDouble(),
+        prixVente: (json['prixVente'] as num).toDouble(),
+        stockActuel: json['stockActuel'] as int,
+        devise: json['devise'] as String,
+        dateCreation: DateTime.parse(json['dateCreation'] as String),
+        dateModification: json['dateModification'] == null
+            ? null
+            : DateTime.parse(json['dateModification'] as String),
+        synchronise: json['synchronise'] as bool? ?? false,
+        prixAchatMineur: json['prixAchatMineur'] as int?,
+        prixVenteMineur: json['prixVenteMineur'] as int?,
+      );
 }

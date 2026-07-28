@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caisse de Poche — maquette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400;12..96,75..100,600;12..96,75..100,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#17150F;
+  --ink-2:#3A362C;
+  --paper:#FCFAF5;
+  --card:#FFFFFF;
+  --line:#E4DFD3;
+  --ocre:#E0A02B;
+  --ocre-d:#B57C13;
+  --vert:#1C6B57;
+  --vert-l:#E7F1ED;
+  --brique:#AF3524;
+  --brique-l:#FBEBE8;
+  --mute:#8A8474;
+  --nuit:#131A1F;
+  --r:14px;
+  --disp:'Bricolage Grotesque','Inter',system-ui,sans-serif;
+  --body:'Inter',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--body);
+  background:
+    radial-gradient(circle at 12% 0%, #2A3138 0%, transparent 55%),
+    var(--nuit);
+  color:var(--ink);
+  min-height:100vh;
+  padding:20px 14px 56px;
+  display:flex;flex-direction:column;align-items:center;gap:22px;
+}
+
+/* ---------- page chrome ---------- */
+.pagehead{width:min(920px,100%);color:#EDE8DC;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between}
+.pagehead h1{font-family:var(--disp);font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.pagehead p{font-size:13px;color:#9AA3A9;margin-top:5px;max-width:46ch;line-height:1.5}
+.devise-switch{display:flex;background:#22292F;border:1px solid #333C44;border-radius:999px;padding:3px}
+.devise-switch button{
+  font:600 12px/1 var(--body);color:#9AA3A9;background:none;border:0;
+  padding:8px 14px;border-radius:999px;cursor:pointer
+}
+.devise-switch button[aria-pressed="true"]{background:var(--ocre);color:#231A05}
+.devise-switch button:focus-visible{outline:2px solid var(--ocre);outline-offset:2px}
+
+/* ---------- phone ---------- */
+.phone{
+  width:min(392px,100%);
+  background:var(--paper);
+  border-radius:34px;
+  border:1px solid #46505A;
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.7);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  height:788px;
+}
+.statusbar{
+  background:var(--ink);color:#CFC9B8;font-size:11px;font-weight:600;
+  padding:9px 20px 7px;display:flex;justify-content:space-between;letter-spacing:.02em
+}
+.apphead{background:var(--ink);color:#FCFAF5;padding:2px 18px 14px}
+.apphead .kicker{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#A69E88;font-weight:600}
+.apphead h2{font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:-.015em;margin-top:2px}
+/* signature: bande rayée façon bâche de marché */
+.awning{height:5px;display:flex}
+.awning i{flex:1}
+.awning i:nth-child(4n+1){background:var(--ocre)}
+.awning i:nth-child(4n+2){background:var(--vert)}
+.awning i:nth-child(4n+3){background:var(--brique)}
+.awning i:nth-child(4n+4){background:var(--ink)}
+
+.screens{flex:1;overflow:hidden;position:relative;background:var(--paper)}
+.screen{position:absolute;inset:0;overflow-y:auto;padding:14px 14px 18px;display:none;flex-direction:column;gap:12px}
+.screen.on{display:flex}
+.screen::-webkit-scrollbar{width:0}
+
+/* ---------- shared bits ---------- */
+.lab{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:700}
+.money{font-family:var(--disp);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* ---------- caisse ---------- */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:10px 8px;text-align:left;cursor:pointer;font-family:var(--body);
+  display:flex;flex-direction:column;gap:6px;min-height:76px;justify-content:space-between;
+  transition:transform .09s ease, border-color .12s ease;
+}
+.tile:active{transform:scale(.955)}
+.tile:focus-visible{outline:2px solid var(--vert);outline-offset:2px}
+.tile.bas{border-color:#EEC9A8;background:#FFF9F2}
+.tile .nom{font-size:12px;font-weight:600;line-height:1.25}
+.tile .prix{font-size:15px;font-weight:800;color:var(--ink)}
+.tile .stk{font-size:9.5px;color:var(--mute);font-weight:600}
+.tile.bas .stk{color:var(--brique)}
+.tile .badge{
+  position:relative;align-self:flex-start;background:var(--vert);color:#fff;
+  font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px
+}
+
+.panier{
+  border-top:1px solid var(--line);background:var(--card);
+  padding:12px 14px 14px;display:flex;flex-direction:column;gap:9px
+}
+.panier .vide{font-size:12.5px;color:var(--mute);text-align:center;padding:10px 0 4px;line-height:1.5}
+.lignes{max-height:118px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.ligne{display:flex;align-items:center;gap:9px;font-size:12.5px}
+.ligne .q{background:var(--ink);color:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:2px 6px;min-width:24px;text-align:center}
+.ligne .n{flex:1;font-weight:500}
+.ligne .m{font-weight:700;font-variant-numeric:tabular-nums}
+.ligne button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
+.totalbar{display:flex;align-items:baseline;justify-content:space-between;border-top:1px dashed var(--line);padding-top:9px}
+.totalbar .t{font-size:32px;font-weight:800}
+.marge{font-size:11px;color:var(--vert);font-weight:600}
+.actions{display:grid;grid-template-columns:1.35fr 1fr;gap:8px}
+.btn{
+  border:0;border-radius:11px;padding:14px 10px;font:700 14px/1 var(--body);
+  cursor:pointer;transition:filter .12s ease
+}
+.btn:disabled{opacity:.35;cursor:default}
+.btn:active:not(:disabled){filter:brightness(.93)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.btn-vert{background:var(--vert);color:#fff}
+.btn-ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+
+/* ---------- dettes ---------- */
+.dette{display:flex;gap:11px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px}
+.dette.retard{border-color:#E9B8AF;background:var(--brique-l)}
+.ini{
+  width:38px;height:38px;border-radius:11px;background:var(--ink);color:#fff;flex:none;
+  display:grid;place-items:center;font-family:var(--disp);font-weight:700;font-size:14px
+}
+.dette.retard .ini{background:var(--brique)}
+.dette .who{flex:1;min-width:0}
+.dette .who b{display:block;font-size:13.5px;font-weight:600}
+.dette .who span{font-size:11px;color:var(--mute)}
+.dette.retard .who span{color:var(--brique);font-weight:600}
+.dette .amt{text-align:right;flex:none}
+.dette .amt b{display:block;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.relance{
+  margin-top:3px;border:0;background:var(--vert-l);color:var(--vert);
+  font:700 10.5px/1 var(--body);border-radius:7px;padding:5px 8px;cursor:pointer
+}
+.dette.retard .relance{background:#fff;color:var(--brique)}
+
+/* ---------- stock ---------- */
+.stock-l{display:flex;align-items:center;gap:11px;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.stock-l .bar{width:5px;align-self:stretch;border-radius:99px;background:var(--vert)}
+.stock-l.bas .bar{background:var(--ocre)}
+.stock-l.rup .bar{background:var(--brique)}
+.stock-l .info{flex:1;min-width:0}
+.stock-l .info b{font-size:13px;font-weight:600;display:block}
+.stock-l .info span{font-size:11px;color:var(--mute)}
+.stock-l .qte{font-family:var(--disp);font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.stock-l.rup .qte{color:var(--brique)}
+.pill{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--ocre);color:#2E2103}
+.pill.r{background:var(--brique);color:#fff}
+
+/* ---------- bilan ---------- */
+.big{background:var(--ink);color:#FCFAF5;border-radius:var(--r);padding:16px}
+.big .lab{color:#A69E88}
+.big .v{font-size:40px;font-weight:800;margin-top:2px}
+.big .sub{font-size:11.5px;color:#A69E88;margin-top:6px;line-height:1.5}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat .lab{margin-bottom:4px}
+.stat .v{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat.neg .v{color:var(--brique)}
+.stat.pos .v{color:var(--vert)}
+.note{font-size:11.5px;color:var(--mute);line-height:1.55;padding:0 2px}
+
+/* ---------- réglages ---------- */
+.set{display:flex;gap:11px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.set .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;font-size:15px}
+.set .tx{flex:1}
+.set .tx b{display:block;font-size:13px;font-weight:600}
+.set .tx span{font-size:11px;color:var(--mute);line-height:1.4;display:block;margin-top:1px}
+.tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px}
+.tag.ok{background:var(--vert-l);color:var(--vert)}
+.tag.warn{background:var(--brique-l);color:var(--brique)}
+
+/* ---------- nav ---------- */
+.nav{display:flex;background:var(--ink);padding:7px 4px 11px}
+.nav button{
+  flex:1;background:none;border:0;color:#7C7666;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;
+  font:600 9.5px/1 var(--body);letter-spacing:.02em
+}
+.nav button[aria-current="true"]{color:var(--ocre)}
+.nav button:focus-visible{outline:2px solid var(--ocre);outline-offset:-2px;border-radius:8px}
+.nav svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- feuille + toast ---------- */
+.sheet{position:absolute;inset:0;background:rgba(20,18,12,.5);display:none;align-items:flex-end;z-index:5}
+.sheet.on{display:flex}
+.sheet-in{background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:18px 16px 20px;display:flex;flex-direction:column;gap:9px}
+.sheet-in h3{font-family:var(--disp);font-size:17px;font-weight:700}
+.cli{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:#fff;cursor:pointer;font-family:var(--body);text-align:left}
+.cli b{font-size:13px;font-weight:600}
+.cli span{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums}
+.toast{
+  position:absolute;left:14px;right:14px;bottom:16px;z-index:9;
+  background:var(--ink);color:#FCFAF5;border-radius:12px;padding:12px 14px;
+  font-size:12.5px;line-height:1.45;
+  opacity:0;transform:translateY(14px);pointer-events:none;transition:.25s ease
+}
+.toast.on{opacity:1;transform:none}
+.toast b{font-weight:700}
+
+/* ---------- légende ---------- */
+.legend{width:min(392px,100%);color:#9AA3A9;font-size:12px;line-height:1.6}
+.legend h3{color:#EDE8DC;font-family:var(--disp);font-size:14px;font-weight:700;margin-bottom:7px}
+.legend li{margin-bottom:5px;list-style:none;padding-left:14px;position:relative}
+.legend li::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:99px;background:var(--ocre)}
+.legend em{color:#EDE8DC;font-style:normal;font-weight:600}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="pagehead">
+  <div>
+    <h1>Caisse de Poche</h1>
+    <p>Maquette cliquable. Touche les produits pour remplir le panier, puis encaisse ou mets en dette.</p>
+  </div>
+  <div class="devise-switch" role="group" aria-label="Devise">
+    <button id="bXOF" aria-pressed="true">FCFA</button>
+    <button id="bEUR" aria-pressed="false">EUR</button>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="statusbar"><span>08:41</span><span>Hors-ligne · 87 %</span></div>
+  <div class="apphead">
+    <div class="kicker" id="kick">Mardi 28 juillet</div>
+    <h2 id="titre">Caisse</h2>
+  </div>
+  <div class="awning" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+  <div class="screens">
+
+    <!-- CAISSE -->
+    <section class="screen on" id="s-caisse" style="padding:0">
+      <div style="flex:1;overflow-y:auto;padding:13px 13px 8px">
+        <div class="grid" id="grille"></div>
+      </div>
+      <div class="panier">
+        <div id="panierVide" class="vide">Panier vide.<br>Touche un produit pour commencer.</div>
+        <div class="lignes" id="lignes" hidden></div>
+        <div class="totalbar">
+          <div>
+            <div class="lab">Total</div>
+            <div class="money t" id="total">0</div>
+          </div>
+          <div class="marge" id="margeTxt">Marge 0</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-vert" id="btnEnc" disabled>Encaisser</button>
+          <button class="btn btn-ghost" id="btnDet" disabled>Mettre en dette</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DETTES -->
+    <section class="screen" id="s-dettes">
+      <div class="card row" style="background:var(--ink);color:#FCFAF5;border:0">
+        <div><div class="lab" style="color:#A69E88">Total dû par 4 clients</div>
+        <div class="money" style="font-size:29px;font-weight:800" id="totalDettes">26 000</div></div>
+        <div style="text-align:right"><div class="lab" style="color:#A69E88">En retard</div>
+        <div class="money" style="font-size:19px;font-weight:800;color:#E9A79B" id="retardDettes">2 000</div></div>
+      </div>
+      <div id="listeDettes" style="display:flex;flex-direction:column;gap:8px"></div>
+      <p class="note">La relance ouvre WhatsApp avec le message déjà écrit. Si WhatsApp est absent, elle bascule sur le SMS.</p>
+    </section>
+
+    <!-- STOCK -->
+    <section class="screen" id="s-stock">
+      <div class="duo">
+        <div class="card stat"><div class="lab">Valeur du stock</div><div class="money v" id="valStock">184 500</div></div>
+        <div class="card stat neg"><div class="lab">À réapprovisionner</div><div class="money v">3</div></div>
+      </div>
+      <div id="listeStock" style="display:flex;flex-direction:column;gap:7px"></div>
+    </section>
+
+    <!-- BILAN -->
+    <section class="screen" id="s-bilan">
+      <div class="big">
+        <div class="lab">Résultat net du jour</div>
+        <div class="money v" id="resNet">8 350</div>
+        <div class="sub">Marge brute moins les dépenses. C'est ce qui te reste vraiment.</div>
+      </div>
+      <div class="duo">
+        <div class="card stat"><div class="lab">Chiffre d'affaires</div><div class="money v" id="ca">47 300</div></div>
+        <div class="card stat pos"><div class="lab">Marge brute</div><div class="money v" id="mb">11 850</div></div>
+      </div>
+      <div class="duo">
+        <div class="card stat neg"><div class="lab">Dépenses</div><div class="money v" id="dep">3 500</div></div>
+        <div class="card stat"><div class="lab">Encaissé en caisse</div><div class="money v" id="enc">52 800</div></div>
+      </div>
+      <p class="note"><b style="color:var(--ink)">Encaissé ≠ chiffre d'affaires.</b> Les 5 500 de dettes remboursées aujourd'hui sont entrés en caisse, mais la vente avait déjà été comptée le jour où elle a eu lieu. Les compter deux fois est l'erreur classique.</p>
+      <div class="card"><div class="lab" style="margin-bottom:8px">Les 3 qui rapportent le plus</div>
+        <div class="row" style="font-size:12.5px;margin-bottom:6px"><span>Riz 5 kg</span><b class="money" id="p1">+4 000</b></div>
+        <div class="row" style="font-size:12.5px;margin-bottom:6px"><span>Huile 1 L</span><b class="money" id="p2">+2 500</b></div>
+        <div class="row" style="font-size:12.5px"><span>Sucre 1 kg</span><b class="money" id="p3">+1 350</b></div>
+      </div>
+    </section>
+
+    <!-- RÉGLAGES -->
+    <section class="screen" id="s-reglages">
+      <div class="set">
+        <div class="ic" style="background:var(--brique-l);color:var(--brique)">↓</div>
+        <div class="tx"><b>Sauvegarde</b><span>Dernière : il y a 9 jours</span></div>
+        <span class="tag warn">À faire</span>
+      </div>
+      <button class="btn btn-vert" style="width:100%" onclick="toast('<b>Sauvegarde créée.</b> Envoie le fichier sur WhatsApp ou Drive pour la mettre à l\'abri.')">Sauvegarder maintenant</button>
+      <div class="set">
+        <div class="ic" style="background:var(--vert-l);color:var(--vert)">☾</div>
+        <div class="tx"><b>Code de verrouillage</b><span>Demandé à l'ouverture</span></div>
+        <span class="tag ok">Actif</span>
+      </div>
+      <div class="set">
+        <div class="ic" style="background:#F2EEE3;color:var(--ocre-d)">◈</div>
+        <div class="tx"><b>Devise</b><span id="setDevise">Franc CFA — F · sans décimale</span></div>
+      </div>
+      <div class="set">
+        <div class="ic" style="background:#F2EEE3;color:var(--mute)">↻</div>
+        <div class="tx"><b>Synchronisation cloud</b><span>Non configurée. L'app marche à 100 % sans elle.</span></div>
+        <span class="tag warn">Inactive</span>
+      </div>
+      <p class="note">Tant que la synchronisation n'est pas branchée, la sauvegarde manuelle est la seule chose qui protège le carnet. Elle doit être impossible à oublier.</p>
+    </section>
+
+    <!-- feuille client -->
+    <div class="sheet" id="sheet">
+      <div class="sheet-in">
+        <h3>Mettre au compte de qui&nbsp;?</h3>
+        <button class="cli" data-c="Awa Koné"><b>Awa Koné</b><span id="c1">doit 4 500</span></button>
+        <button class="cli" data-c="Ibrahim Traoré"><b>Ibrahim Traoré</b><span id="c2">doit 12 000</span></button>
+        <button class="cli" data-c="Yaya Sanogo"><b>Yaya Sanogo</b><span id="c3">doit 7 500</span></button>
+        <button class="cli" data-c="Nouveau client"><b>+ Nouveau client</b><span>Nom et numéro</span></button>
+        <button class="btn btn-ghost" id="fermeSheet" style="margin-top:4px">Annuler</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <nav class="nav" id="nav">
+    <button data-s="caisse" data-t="Caisse" aria-current="true">
+      <svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2M12 12v4"/></svg>Caisse</button>
+    <button data-s="dettes" data-t="Carnet de dettes">
+      <svg viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 16h14M9 8h6"/></svg>Dettes</button>
+    <button data-s="stock" data-t="Stock">
+      <svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>Stock</button>
+    <button data-s="bilan" data-t="Bilan du jour">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Bilan</button>
+    <button data-s="reglages" data-t="Réglages">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Réglages</button>
+  </nav>
+</div>
+
+<div class="legend">
+  <h3>Ce que la maquette montre</h3>
+  <ul>
+    <li><em>Phase 1</em> — bascule FCFA / EUR en haut : zéro décimale d'un côté, deux de l'autre. Un seul formateur, jamais « 1 500,00 F ».</li>
+    <li><em>Phase 3</em> — « Mettre en dette » relie la vente au carnet en un geste. Le stock sort quand même.</li>
+    <li><em>Phase 7</em> — l'écran Bilan sépare marge brute, dépenses et résultat net, et distingue l'encaissé du chiffre d'affaires.</li>
+    <li><em>Phase 2</em> — l'alerte de sauvegarde vit dans les Réglages tant qu'elle n'est pas faite.</li>
+    <li>La Caisse n'a aucune bannière publicitaire. C'est délibéré.</li>
+  </ul>
+</div>
+
+<script>
+const PRODUITS=[
+  {n:"Riz 5 kg",pv:3500,pa:3000,s:14},
+  {n:"Huile 1 L",pv:1200,pa:950,s:9},
+  {n:"Sucre 1 kg",pv:800,pa:650,s:22},
+  {n:"Lait concentré",pv:400,pa:325,s:3},
+  {n:"Savon",pv:300,pa:225,s:31},
+  {n:"Sardine",pv:500,pa:400,s:17},
+  {n:"Eau 1,5 L",pv:300,pa:225,s:0},
+  {n:"Pain",pv:200,pa:150,s:12},
+  {n:"Spaghetti",pv:350,pa:275,s:2},
+  {n:"Tomate boîte",pv:250,pa:190,s:19},
+  {n:"Café sachet",pv:100,pa:75,s:44},
+  {n:"Allumettes",pv:100,pa:70,s:26}
+];
+let DETTES=[
+  {n:"Mariam Diarra",m:2000,j:28,r:true},
+  {n:"Ibrahim Traoré",m:12000,j:3,r:false},
+  {n:"Yaya Sanogo",m:7500,j:5,r:false},
+  {n:"Awa Koné",m:4500,j:12,r:false}
+];
+
+let devise="XOF";
+const TAUX=655.957;
+const fmt=v=>devise==="XOF"
+  ? Math.round(v).toLocaleString("fr-FR").replace(/\u202F|\s/g,"\u00A0")+"\u00A0F"
+  : (v/TAUX).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+"\u00A0€";
+
+let panier=[];
+
+/* ----- rendu ----- */
+function rendreGrille(){
+  document.getElementById("grille").innerHTML=PRODUITS.map((p,i)=>{
+    const q=panier.filter(x=>x.i===i).reduce((a,b)=>a+b.q,0);
+    const bas=p.s<=5;
+    return `<button class="tile${bas?' bas':''}" data-i="${i}">
+      ${q?`<span class="badge">${q}</span>`:''}
+      <span class="nom">${p.n}</span>
+      <span><span class="prix money">${fmt(p.pv)}</span><br>
+      <span class="stk">${p.s===0?'Rupture':p.s+' en stock'}</span></span>
+    </button>`;
+  }).join("");
+}
+function rendrePanier(){
+  const L=document.getElementById("lignes"),V=document.getElementById("panierVide");
+  const vide=panier.length===0;
+  L.hidden=vide; V.hidden=!vide;
+  L.innerHTML=panier.map((l,k)=>`<div class="ligne">
+    <span class="q">${l.q}×</span><span class="n">${PRODUITS[l.i].n}</span>
+    <span class="m money">${fmt(PRODUITS[l.i].pv*l.q)}</span>
+    <button data-k="${k}" aria-label="Retirer">×</button></div>`).join("");
+  const tot=panier.reduce((a,l)=>a+PRODUITS[l.i].pv*l.q,0);
+  const mar=panier.reduce((a,l)=>a+(PRODUITS[l.i].pv-PRODUITS[l.i].pa)*l.q,0);
+  document.getElementById("total").textContent=fmt(tot);
+  document.getElementById("margeTxt").textContent="Marge "+fmt(mar);
+  document.getElementById("btnEnc").disabled=vide;
+  document.getElementById("btnDet").disabled=vide;
+}
+function rendreDettes(){
+  const t=DETTES.reduce((a,d)=>a+d.m,0);
+  const r=DETTES.filter(d=>d.r).reduce((a,d)=>a+d.m,0);
+  document.getElementById("totalDettes").textContent=fmt(t);
+  document.getElementById("retardDettes").textContent=fmt(r);
+  document.querySelector("#s-dettes .lab").textContent="Total dû par "+DETTES.length+" clients";
+  document.getElementById("listeDettes").innerHTML=DETTES.map(d=>`
+    <div class="dette${d.r?' retard':''}">
+      <span class="ini">${d.n.split(" ").map(x=>x[0]).join("")}</span>
+      <span class="who"><b>${d.n}</b><span>${d.r?'En retard · '+d.j+' jours':'Depuis '+d.j+' jours'}</span></span>
+      <span class="amt"><b class="money">${fmt(d.m)}</b>
+        <button class="relance" data-n="${d.n}">Relancer</button></span>
+    </div>`).join("");
+}
+function rendreStock(){
+  document.getElementById("valStock").textContent=fmt(PRODUITS.reduce((a,p)=>a+p.pa*p.s,0));
+  document.getElementById("listeStock").innerHTML=[...PRODUITS].sort((a,b)=>a.s-b.s).map(p=>{
+    const c=p.s===0?'rup':(p.s<=5?'bas':'');
+    return `<div class="stock-l ${c}"><span class="bar"></span>
+      <span class="info"><b>${p.n}</b><span>Achat ${fmt(p.pa)} · Vente ${fmt(p.pv)} · Marge ${fmt(p.pv-p.pa)}</span></span>
+      ${p.s===0?'<span class="pill r">Rupture</span>':(p.s<=5?'<span class="pill">Bas</span>':'')}
+      <span class="qte">${p.s}</span></div>`;
+  }).join("");
+}
+function rendreBilan(){
+  const v={resNet:8350,ca:47300,mb:11850,dep:3500,enc:52800,p1:4000,p2:2500,p3:1350};
+  for(const k in v){const e=document.getElementById(k);e.textContent=(k[0]==="p"?"+":"")+fmt(v[k]);}
+  document.getElementById("c1").textContent="doit "+fmt(4500);
+  document.getElementById("c2").textContent="doit "+fmt(12000);
+  document.getElementById("c3").textContent="doit "+fmt(7500);
+  document.getElementById("setDevise").textContent=devise==="XOF"
+    ?"Franc CFA — F · sans décimale":"Euro — € · deux décimales";
+}
+function tout(){rendreGrille();rendrePanier();rendreDettes();rendreStock();rendreBilan();}
+
+/* ----- interactions ----- */
+document.getElementById("grille").addEventListener("click",e=>{
+  const b=e.target.closest(".tile"); if(!b) return;
+  const i=+b.dataset.i;
+  if(PRODUITS[i].s===0){toast("<b>"+PRODUITS[i].n+"</b> est en rupture. Réapprovisionne d'abord depuis l'écran Stock.");return;}
+  const l=panier.find(x=>x.i===i); l?l.q++:panier.push({i,q:1});
+  rendreGrille();rendrePanier();
+});
+document.getElementById("lignes").addEventListener("click",e=>{
+  if(e.target.dataset.k===undefined) return;
+  panier.splice(+e.target.dataset.k,1);rendreGrille();rendrePanier();
+});
+document.getElementById("btnEnc").addEventListener("click",()=>{
+  const tot=panier.reduce((a,l)=>a+PRODUITS[l.i].pv*l.q,0);
+  const mar=panier.reduce((a,l)=>a+(PRODUITS[l.i].pv-PRODUITS[l.i].pa)*l.q,0);
+  panier.forEach(l=>PRODUITS[l.i].s-=l.q);
+  panier=[];tout();
+  toast("<b>Vente enregistrée · "+fmt(tot)+"</b><br>Marge "+fmt(mar)+" · stock mis à jour");
+});
+document.getElementById("btnDet").addEventListener("click",()=>document.getElementById("sheet").classList.add("on"));
+document.getElementById("fermeSheet").addEventListener("click",()=>document.getElementById("sheet").classList.remove("on"));
+document.querySelectorAll(".cli").forEach(b=>b.addEventListener("click",()=>{
+  const nom=b.dataset.c==="Nouveau client"?"Nouveau client":b.dataset.c;
+  const tot=panier.reduce((a,l)=>a+PRODUITS[l.i].pv*l.q,0);
+  panier.forEach(l=>PRODUITS[l.i].s-=l.q);
+  const d=DETTES.find(x=>x.n===nom);
+  d?d.m+=tot:DETTES.unshift({n:nom,m:tot,j:0,r:false});
+  panier=[];document.getElementById("sheet").classList.remove("on");tout();
+  toast("<b>Dette créée · "+nom+"</b><br>+"+fmt(tot)+" au carnet · la marge est comptée dès aujourd'hui");
+}));
+document.getElementById("listeDettes").addEventListener("click",e=>{
+  const b=e.target.closest(".relance"); if(!b) return;
+  toast("<b>WhatsApp s'ouvre</b><br>« Bonjour "+b.dataset.n+", petit rappel pour le solde de votre compte. Merci&nbsp;! »");
+});
+document.getElementById("nav").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.querySelectorAll("#nav button").forEach(x=>x.setAttribute("aria-current",x===b));
+  document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==="s-"+b.dataset.s));
+  document.getElementById("titre").textContent=b.dataset.t;
+  document.getElementById("kick").textContent=b.dataset.s==="caisse"?"Mardi 28 juillet":"Boutique Monson";
+});
+document.getElementById("bXOF").addEventListener("click",()=>setDev("XOF"));
+document.getElementById("bEUR").addEventListener("click",()=>setDev("EUR"));
+function setDev(d){
+  devise=d;
+  document.getElementById("bXOF").setAttribute("aria-pressed",d==="XOF");
+  document.getElementById("bEUR").setAttribute("aria-pressed",d==="EUR");
+  tout();
+}
+let tm;
+function toast(html){
+  const t=document.getElementById("toast");
+  t.innerHTML=html;t.classList.add("on");
+  clearTimeout(tm);tm=setTimeout(()=>t.classList.remove("on"),3400);
+}
+tout();
+</script>
+</body>
+</html>
