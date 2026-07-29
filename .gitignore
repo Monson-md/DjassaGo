@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase - inerte tant que Phase 9 n'est pas lancee (voir CHECKLIST.md)
+/android/app/google-services.json
+
+# Polices - non commitees tant que le design (Phase design) n'est pas branche (voir CLAUDE.md)
+/assets/fonts/*.ttf
