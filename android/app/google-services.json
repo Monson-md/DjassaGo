@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "258130852617",
+    "project_id": "djassago-efe72",
+    "storage_bucket": "djassago-efe72.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:258130852617:android:c95806c307e216f26c71d8",
+        "android_client_info": {
+          "package_name": "com.djassago"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxis5x1Hb9YbGvf_sWi_NabBwPN9pLZiE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
