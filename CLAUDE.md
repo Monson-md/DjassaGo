@@ -38,6 +38,7 @@ Lis ces fichiers avant de commencer quoi que ce soit.
 6. **Aucun nouveau plugin natif sans validation explicite.** Flutter 3.44 casse plusieurs plugins qui n'ont pas suivi la migration Built-in Kotlin. En cas de doute, préférer du Dart pur ou un paquet maintenu par l'équipe Flutter.
 7. **Avant chaque push : `git status`.** Tout ce que `pubspec.yaml` référence doit être suivi par Git. La CI ne voit que ce qui est commité — une déclaration d'asset sans le fichier casse le build.
 8. **Firebase reste dehors** jusqu'à la Phase 9, et uniquement après que le propriétaire ait lancé `flutterfire configure`. Le fichier `google-services.json` présent est inerte et ne doit pas être commité.
+9. **Compilation locale interdite.** `flutter analyze` et `flutter test` sont autorisés en local, ils sont légers. `flutter build apk`, `flutter build appbundle` et toute tâche Gradle sont interdits — la machine n'a que 4 Go de RAM et Gradle ne termine jamais (il tourne pendant une heure puis rien, ce n'est pas récupérable). Les APK sont produits uniquement par GitHub Actions. Procédure : `flutter analyze` → `flutter test` → commit → push — et c'est GitHub qui construit. Impossible de vérifier soi-même qu'un plugin natif compile ; on pousse et on attend le retour du propriétaire après consultation du build sur GitHub.
 
 ---
 

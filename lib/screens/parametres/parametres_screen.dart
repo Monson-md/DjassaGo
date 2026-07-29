@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +26,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
   final _backupService = BackupService();
   bool _synchronisationEnCours = false;
   bool _exportEnCours = false;
+  bool _importEnCours = false;
 
   Future<void> _synchroniserMaintenant() async {
     setState(() => _synchronisationEnCours = true);
@@ -87,16 +91,58 @@ class _ParametresScreenState extends State<ParametresScreen> {
     }
   }
 
-  /// Import désactivé : file_picker a été retiré du projet (voir
-  /// CHECKLIST.md — incompatible avec la migration Flutter "built-in
-  /// Kotlin"). BackupService.analyserFichier/restaurer restent
-  /// disponibles et fonctionnels ; il ne manque qu'un sélecteur de
-  /// fichier pour les brancher à nouveau (candidat : file_selector,
-  /// maintenu par l'équipe Flutter).
-  void _importer() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Import de sauvegarde bientôt disponible')),
-    );
+  Future<void> _importer() async {
+    const typeGroup = XTypeGroup(label: 'sauvegarde', extensions: ['json']);
+    final XFile? choisi = await openFile(acceptedTypeGroups: [typeGroup]);
+    if (choisi == null) return;
+    if (!mounted) return;
+
+    setState(() => _importEnCours = true);
+    final fichier = File(choisi.path);
+    try {
+      final apercu = await _backupService.analyserFichier(fichier);
+      if (!mounted) return;
+
+      final remplacer = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Restaurer cette sauvegarde ?'),
+          content: Text(
+            '${apercu.nombreProduits} produits, ${apercu.nombreVentes} ventes, '
+            '${apercu.nombreDettes} dettes'
+            '${apercu.exporteLe == null ? '' : '\nExportée le ${formaterDate(apercu.exporteLe!)}.'}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Fusionner'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Remplacer'),
+            ),
+          ],
+        ),
+      );
+      if (remplacer == null) return;
+
+      await _backupService.restaurer(fichier, remplacer: remplacer);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sauvegarde restaurée.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Échec de l'import : $e")),
+      );
+    } finally {
+      if (mounted) setState(() => _importEnCours = false);
+    }
   }
 
   @override
@@ -142,11 +188,19 @@ class _ParametresScreenState extends State<ParametresScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: Icon(Icons.restore_outlined, color: Colors.grey.shade400),
+                  leading: const Icon(Icons.restore_outlined),
                   title: const Text('Importer une sauvegarde'),
-                  subtitle: const Text('Bientôt disponible.'),
-                  trailing: const Icon(Icons.info_outline, size: 18),
-                  onTap: _importer,
+                  subtitle: const Text(
+                    'Restaure un fichier exporté précédemment.',
+                  ),
+                  trailing: _importEnCours
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chevron_right),
+                  onTap: _importEnCours ? null : _importer,
                 ),
               ],
             ),
