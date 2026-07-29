@@ -29,9 +29,24 @@ Retiré du code natif : la meta-data AdMob dans `android/app/src/main/AndroidMan
 4. Ne jamais appeler `MobileAds.instance.initialize()` avant la première frame rendue (voir la structure différée déjà en place dans `lib/main.dart`).
 5. Tester d'abord avec un APK debug.
 
+## file_picker — retiré temporairement (import de sauvegarde désactivé)
+
+Retiré le 2026-07-29 : `flutter build apk --debug` échouait avec `cannot find symbol class FilePickerPlugin`. Cause réelle, confirmée par la documentation officielle Flutter (docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin) : Flutter 3.44 (notre version, sortie 2026-05-18) exige Android Gradle Plugin 9+, qui intègre désormais un support Kotlin natif ("built-in Kotlin"). Les versions de `file_picker` alors installées appliquent encore l'ancien plugin `kotlin-android` manuellement, ce qui crée une extension Kotlin en double et fait échouer le build. C'est un problème connu et documenté (voir miguelpruivo/flutter_file_picker#1973, #1942), pas spécifique à ce projet — la correction dépend des mainteneurs du plugin.
+
+Ce que ça implique pour **tout** plugin natif du projet (pas seulement file_picker) : n'importe quel plugin qui applique encore l'ancien `kotlin-android` cassera de la même façon sous Flutter 3.44+. `share_plus`, `url_launcher` et `path_provider` n'ont pas encore été testés isolément contre ce build ; si le prochain build échoue ailleurs, c'est probablement la même cause.
+
+**Import de sauvegarde désactivé dans l'UI** (Réglages → "Importer une sauvegarde" affiche "Bientôt disponible" et ne fait rien d'autre). `BackupService.analyserFichier()` et `BackupService.restaurer()` restent intacts et fonctionnels — il ne manque qu'un sélecteur de fichier pour les rebrancher.
+
+**Pour réactiver l'import, plus tard :**
+1. Ajouter `file_selector` (maintenu par l'équipe Flutter elle-même, donc plus susceptible d'être à jour avec les migrations AGP/Kotlin que des plugins tiers) plutôt que `file_picker`.
+2. Vérifier d'abord, avant d'ajouter quoi que ce soit, que le projet compile toujours correctement (règle en vigueur : aucun nouveau plugin natif tant que l'app n'a pas démarré au moins une fois).
+3. Rebrancher `FilePicker`/`file_selector` dans `lib/screens/parametres/parametres_screen.dart::_importer()` pour obtenir un chemin de fichier, puis appeler `BackupService.analyserFichier` et `BackupService.restaurer` comme avant.
+
 ## Encore à faire (mis à jour au fil des phases)
 
 - [ ] Keystore de signature Android pour un vrai build de release (actuellement signé avec les clés debug — `flutter run --release` fonctionne mais n'est pas publiable tel quel).
 - [ ] Projet Firebase + `flutterfire configure` (voir ci-dessus, volontairement différé).
 - [ ] Identifiants AdMob réels (voir ci-dessus, volontairement différé).
 - [ ] Compte Play Console pour la publication.
+- [ ] Réactiver l'import de sauvegarde avec `file_selector` (voir ci-dessus).
+- [ ] Décider si le CI reste sur Flutter 3.44.x ou revient temporairement sur la ligne stable précédente (3.41.9) le temps que l'écosystème de plugins rattrape la migration "built-in Kotlin" — voir la discussion dans l'historique de conversation, en attente de décision.

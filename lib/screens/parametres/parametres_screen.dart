@@ -1,13 +1,8 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/currency_provider.dart';
-import '../../providers/dette_provider.dart';
-import '../../providers/produit_provider.dart';
 import '../../services/backup_service.dart';
 import '../../services/diagnostic_service.dart';
 import '../../services/sync_service.dart';
@@ -28,7 +23,6 @@ class _ParametresScreenState extends State<ParametresScreen> {
   final _backupService = BackupService();
   bool _synchronisationEnCours = false;
   bool _exportEnCours = false;
-  bool _importEnCours = false;
 
   Future<void> _synchroniserMaintenant() async {
     setState(() => _synchronisationEnCours = true);
@@ -93,77 +87,15 @@ class _ParametresScreenState extends State<ParametresScreen> {
     }
   }
 
-  Future<void> _importer() async {
-    final resultat = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-    final chemin = resultat?.files.single.path;
-    if (chemin == null || !mounted) return;
-
-    final fichier = File(chemin);
-    setState(() => _importEnCours = true);
-    ApercuSauvegarde apercu;
-    try {
-      apercu = await _backupService.analyserFichier(fichier);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _importEnCours = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _importEnCours = false);
-
-    final choix = await _confirmerRestauration(apercu);
-    if (choix == null || !mounted) return;
-
-    try {
-      await _backupService.restaurer(fichier, remplacer: choix);
-      if (!mounted) return;
-      context.read<ProduitProvider>().charger();
-      context.read<DetteProvider>().charger();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sauvegarde restaurée')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Échec de la restauration : $e")),
-      );
-    }
-  }
-
-  /// Retourne true (remplacer), false (fusionner), ou null (annulé).
-  Future<bool?> _confirmerRestauration(ApercuSauvegarde apercu) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Restaurer cette sauvegarde ?'),
-        content: Text(
-          '${apercu.nombreProduits} produits, ${apercu.nombreVentes} ventes, '
-          '${apercu.nombreDettes} dettes'
-          '${apercu.exporteLe != null ? ' — exportée le ${formaterDate(apercu.exporteLe!)}' : ''}.\n\n'
-          'Fusionner : garde vos données actuelles, ajoute et met à jour '
-          "avec celles du fichier.\nRemplacer : efface d'abord toutes les "
-          'données actuelles.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Fusionner'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Remplacer'),
-          ),
-        ],
-      ),
+  /// Import désactivé : file_picker a été retiré du projet (voir
+  /// CHECKLIST.md — incompatible avec la migration Flutter "built-in
+  /// Kotlin"). BackupService.analyserFichier/restaurer restent
+  /// disponibles et fonctionnels ; il ne manque qu'un sélecteur de
+  /// fichier pour les brancher à nouveau (candidat : file_selector,
+  /// maintenu par l'équipe Flutter).
+  void _importer() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Import de sauvegarde bientôt disponible')),
     );
   }
 
@@ -210,19 +142,11 @@ class _ParametresScreenState extends State<ParametresScreen> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.restore_outlined),
+                  leading: Icon(Icons.restore_outlined, color: Colors.grey.shade400),
                   title: const Text('Importer une sauvegarde'),
-                  subtitle: const Text(
-                    'Restaure des données depuis un fichier de sauvegarde.',
-                  ),
-                  trailing: _importEnCours
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.chevron_right),
-                  onTap: _importEnCours ? null : _importer,
+                  subtitle: const Text('Bientôt disponible.'),
+                  trailing: const Icon(Icons.info_outline, size: 18),
+                  onTap: _importer,
                 ),
               ],
             ),
