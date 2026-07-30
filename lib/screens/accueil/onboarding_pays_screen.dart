@@ -39,6 +39,7 @@ class _OnboardingPaysScreenState extends State<OnboardingPaysScreen> {
     await context.read<CurrencyProvider>().definirPaysEtDevise(
           codePays: pays.countryCode,
           nomPays: pays.name,
+          indicatifPays: pays.phoneCode,
         );
 
     if (!mounted) return;

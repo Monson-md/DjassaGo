@@ -100,7 +100,9 @@ class DettesScreen extends StatelessWidget {
                         ),
                         title: Text(dette.nomClient),
                         subtitle: Text(
-                          '${dette.telephone} · ${formaterDate(dette.dateDette)}',
+                          dette.telephone.trim().isEmpty
+                              ? formaterDate(dette.dateDette)
+                              : '${dette.telephone} · ${formaterDate(dette.dateDette)}',
                         ),
                         trailing: Text(
                           formaterMontantMineur(dette.montantDuMineur,

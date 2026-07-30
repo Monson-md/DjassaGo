@@ -60,9 +60,9 @@ class DetteProvider extends ChangeNotifier {
   String genererMessageRelance(Dette dette) =>
       _service.genererMessageRelance(dette);
 
-  Future<bool> envoyerRelanceWhatsApp(Dette dette) =>
-      _service.envoyerRelanceWhatsApp(dette);
+  Future<bool> envoyerRelanceWhatsApp(Dette dette, {String? message}) =>
+      _service.envoyerRelanceWhatsApp(dette, message: message);
 
-  Future<bool> envoyerRelanceSms(Dette dette) =>
-      _service.envoyerRelanceSms(dette);
+  Future<bool> envoyerRelanceSms(Dette dette, {String? message}) =>
+      _service.envoyerRelanceSms(dette, message: message);
 }

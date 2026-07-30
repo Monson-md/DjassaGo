@@ -19,6 +19,12 @@ class ParametresKeys {
   static const String paysCode = 'pays_code';
   static const String paysNom = 'pays_nom';
 
+  /// Indicatif téléphonique du pays (sans le +), utilisé pour normaliser
+  /// les numéros en E.164 (voir lib/utils/telephone.dart). Absent chez les
+  /// installations qui ont fait l'onboarding avant la Phase 6 — un repli
+  /// par pays existe dans lib/utils/indicatifs_telephoniques.dart.
+  static const String indicatifPays = 'indicatif_pays';
+
   /// Version du schéma Hive attendue par le code actuel. Comparée à la
   /// valeur stockée à chaque démarrage (voir HiveService.init) : en cas
   /// de désaccord, les boxes de données locales sont effacées plutôt que

@@ -2,10 +2,13 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config/hive_boxes.dart';
 import '../models/dette.dart';
 import '../models/paiement_dette.dart';
 import '../utils/devises_disponibles.dart';
+import '../utils/indicatifs_telephoniques.dart';
 import '../utils/money.dart';
+import '../utils/telephone.dart';
 import 'hive_service.dart';
 
 /// Gère le carnet de dettes : CRUD, paiements, et génération de messages
@@ -40,6 +43,18 @@ class DetteService {
     return listerEnCours().fold<double>(0, (s, d) => s + d.montantDu);
   }
 
+  /// Indicatif téléphonique du pays choisi à l'onboarding (voir Phase 6 /
+  /// lib/utils/telephone.dart). Repli par pays si l'installation a fait
+  /// l'onboarding avant l'introduction de ce réglage.
+  String _indicatifPaysActuel() {
+    final box = HiveService.parametresBox;
+    final stocke = box.get(ParametresKeys.indicatifPays) as String?;
+    if (stocke != null) return stocke;
+    final codePays =
+        box.get(ParametresKeys.paysCode, defaultValue: 'CI') as String;
+    return indicatifPourPays(codePays);
+  }
+
   Future<Dette> ajouter({
     required String nomClient,
     required String telephone,
@@ -52,7 +67,7 @@ class DetteService {
     final dette = Dette(
       id: _uuid.v4(),
       nomClient: nomClient,
-      telephone: telephone,
+      telephone: normaliserTelephone(telephone, _indicatifPaysActuel()),
       montantDu: montantDu,
       dateDette: dateDette ?? DateTime.now(),
       devise: devise,
@@ -118,26 +133,41 @@ class DetteService {
         'Bonne journée !';
   }
 
-  String _nettoyerTelephone(String telephone) {
-    return telephone.replaceAll(RegExp(r'[^0-9+]'), '');
-  }
-
-  /// Ouvre WhatsApp avec le message de relance pré-rempli pour ce client.
-  Future<bool> envoyerRelanceWhatsApp(Dette dette, {String? nomCommerce}) async {
-    final telephone = _nettoyerTelephone(dette.telephone).replaceFirst('+', '');
-    final message = genererMessageRelance(dette, nomCommerce: nomCommerce ?? 'notre boutique');
-    final uri = Uri.parse('https://wa.me/$telephone?text=${Uri.encodeComponent(message)}');
+  /// Ouvre WhatsApp avec le message de relance pré-rempli pour ce client
+  /// (éventuellement modifié par le commerçant avant envoi, voir [message]).
+  /// Le numéro est normalisé au moment de l'envoi, pour rester fiable même
+  /// sur des dettes enregistrées avant la normalisation en E.164 (Phase 6).
+  Future<bool> envoyerRelanceWhatsApp(
+    Dette dette, {
+    String? nomCommerce,
+    String? message,
+  }) async {
+    final telephone =
+        normaliserTelephone(dette.telephone, _indicatifPaysActuel())
+            .replaceFirst('+', '');
+    if (telephone.isEmpty) return false;
+    final texte = message ??
+        genererMessageRelance(dette, nomCommerce: nomCommerce ?? 'notre boutique');
+    final uri = Uri.parse('https://wa.me/$telephone?text=${Uri.encodeComponent(texte)}');
     return launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   /// Ouvre l'application SMS avec le message de relance pré-rempli.
-  Future<bool> envoyerRelanceSms(Dette dette, {String? nomCommerce}) async {
-    final telephone = _nettoyerTelephone(dette.telephone);
-    final message = genererMessageRelance(dette, nomCommerce: nomCommerce ?? 'notre boutique');
+  /// Sert aussi de repli automatique quand WhatsApp n'est pas installé
+  /// (voir DetteDetailSheet._envoyerWhatsApp).
+  Future<bool> envoyerRelanceSms(
+    Dette dette, {
+    String? nomCommerce,
+    String? message,
+  }) async {
+    final telephone = normaliserTelephone(dette.telephone, _indicatifPaysActuel());
+    if (telephone.isEmpty) return false;
+    final texte = message ??
+        genererMessageRelance(dette, nomCommerce: nomCommerce ?? 'notre boutique');
     final uri = Uri(
       scheme: 'sms',
       path: telephone,
-      queryParameters: {'body': message},
+      queryParameters: {'body': texte},
     );
     return launchUrl(uri);
   }

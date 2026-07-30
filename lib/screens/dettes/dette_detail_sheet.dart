@@ -18,26 +18,48 @@ class DetteDetailSheet extends StatefulWidget {
 
 class _DetteDetailSheetState extends State<DetteDetailSheet> {
   final _montantPaiementController = TextEditingController();
+  late final TextEditingController _messageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _messageController = TextEditingController(
+      text: context.read<DetteProvider>().genererMessageRelance(widget.dette),
+    );
+  }
 
   @override
   void dispose() {
     _montantPaiementController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
   Future<void> _envoyerWhatsApp() async {
     final provider = context.read<DetteProvider>();
-    final ok = await provider.envoyerRelanceWhatsApp(widget.dette);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Impossible d'ouvrir WhatsApp")),
-      );
-    }
+    final message = _messageController.text;
+    final ok =
+        await provider.envoyerRelanceWhatsApp(widget.dette, message: message);
+    if (ok || !mounted) return;
+
+    // Repli automatique : WhatsApp n'est pas installé (ou n'a pas pu être
+    // ouvert), on tente le SMS avec le même message avant d'abandonner.
+    final okSms =
+        await provider.envoyerRelanceSms(widget.dette, message: message);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(okSms
+            ? "WhatsApp indisponible, SMS ouvert à la place"
+            : "Impossible d'ouvrir WhatsApp ou l'application SMS"),
+      ),
+    );
   }
 
   Future<void> _envoyerSms() async {
     final provider = context.read<DetteProvider>();
-    final ok = await provider.envoyerRelanceSms(widget.dette);
+    final ok = await provider.envoyerRelanceSms(widget.dette,
+        message: _messageController.text);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Impossible d'ouvrir l'application SMS")),
@@ -57,7 +79,6 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final devise = context.watch<CurrencyProvider>().devise;
-    final message = context.read<DetteProvider>().genererMessageRelance(widget.dette);
     final aUnTelephone = widget.dette.telephone.trim().isNotEmpty;
 
     return SafeArea(
@@ -80,13 +101,22 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
+            Text('Message de relance (modifiable)',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _messageController,
+              maxLines: 4,
+              minLines: 2,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
               ),
-              child: Text(message, style: const TextStyle(fontSize: 13)),
             ),
             const SizedBox(height: 16),
             Row(
