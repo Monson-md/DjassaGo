@@ -62,6 +62,16 @@ class Dette extends HiveObject {
   @HiveField(12)
   String? transactionId;
 
+  /// Appareil ayant écrit la dernière version connue de cette dette (Phase
+  /// 9, préparation — voir lib/services/device_id_service.dart).
+  @HiveField(13, defaultValue: '')
+  String deviceId;
+
+  /// Horodatage de la dernière modification, utilisé pour la résolution
+  /// « dernier écrit gagne » (voir lib/services/sync_conflict_resolver.dart).
+  @HiveField(14)
+  DateTime? lastModified;
+
   Dette({
     required this.id,
     required this.nomClient,
@@ -76,6 +86,8 @@ class Dette extends HiveObject {
     int? montantDuMineur,
     int? montantInitialMineur,
     this.transactionId,
+    this.deviceId = '',
+    this.lastModified,
   })  : montantInitial = montantInitial ?? montantDu,
         montantDuMineur = montantDuMineur ??
             versUnitesMineures(montantDu, decimalesPourCodeIso(devise)),
@@ -89,6 +101,7 @@ class Dette extends HiveObject {
   void definirMontantDu(double montant) {
     montantDu = montant;
     montantDuMineur = versUnitesMineures(montant, decimalesPourCodeIso(devise));
+    lastModified = DateTime.now();
   }
 
   Map<String, dynamic> toMap() {
@@ -122,6 +135,8 @@ class Dette extends HiveObject {
         'montantDuMineur': montantDuMineur,
         'montantInitialMineur': montantInitialMineur,
         'transactionId': transactionId,
+        'deviceId': deviceId,
+        'lastModified': lastModified?.toIso8601String(),
       };
 
   factory Dette.depuisJson(Map<String, dynamic> json) => Dette(
@@ -138,5 +153,9 @@ class Dette extends HiveObject {
         montantDuMineur: json['montantDuMineur'] as int?,
         montantInitialMineur: json['montantInitialMineur'] as int?,
         transactionId: json['transactionId'] as String?,
+        deviceId: json['deviceId'] as String? ?? '',
+        lastModified: json['lastModified'] == null
+            ? null
+            : DateTime.parse(json['lastModified'] as String),
       );
 }

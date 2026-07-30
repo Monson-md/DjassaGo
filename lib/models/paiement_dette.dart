@@ -30,6 +30,15 @@ class PaiementDette extends HiveObject {
   @HiveField(5, defaultValue: 0)
   int montantMineur;
 
+  /// Appareil ayant créé ce paiement (Phase 9, préparation — voir
+  /// lib/services/device_id_service.dart). Un [PaiementDette] est immuable,
+  /// ce champ n'est donc jamais réécrit après sa création.
+  @HiveField(6, defaultValue: '')
+  String deviceId;
+
+  @HiveField(7)
+  DateTime? lastModified;
+
   PaiementDette({
     required this.id,
     required this.detteId,
@@ -37,6 +46,8 @@ class PaiementDette extends HiveObject {
     required this.date,
     required this.devise,
     int? montantMineur,
+    this.deviceId = '',
+    this.lastModified,
   }) : montantMineur = montantMineur ??
             versUnitesMineures(montant, decimalesPourCodeIso(devise));
 
@@ -47,6 +58,8 @@ class PaiementDette extends HiveObject {
         'date': date.toIso8601String(),
         'devise': devise,
         'montantMineur': montantMineur,
+        'deviceId': deviceId,
+        'lastModified': lastModified?.toIso8601String(),
       };
 
   factory PaiementDette.depuisJson(Map<String, dynamic> json) => PaiementDette(
@@ -56,5 +69,9 @@ class PaiementDette extends HiveObject {
         date: DateTime.parse(json['date'] as String),
         devise: json['devise'] as String,
         montantMineur: json['montantMineur'] as int?,
+        deviceId: json['deviceId'] as String? ?? '',
+        lastModified: json['lastModified'] == null
+            ? null
+            : DateTime.parse(json['lastModified'] as String),
       );
 }

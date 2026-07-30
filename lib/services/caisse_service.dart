@@ -7,6 +7,7 @@ import '../utils/devises_disponibles.dart';
 import '../utils/money.dart';
 import '../utils/periodes.dart';
 import 'dette_service.dart';
+import 'device_id_service.dart';
 import 'hive_service.dart';
 import 'produit_service.dart';
 
@@ -75,6 +76,8 @@ class CaisseService {
       montantTotalMineur: montantTotalMineur,
       margeBruteMineur: margeBruteMineur,
       modePaiement: modePaiement,
+      deviceId: DeviceIdService.obtenir(),
+      lastModified: DateTime.now(),
     );
 
     await HiveService.transactionsBox.put(transaction.id, transaction);
@@ -148,6 +151,7 @@ class CaisseService {
     }
 
     transaction.marquerAnnulee(motif: motif);
+    transaction.deviceId = DeviceIdService.obtenir();
     await transaction.save();
     return transaction;
   }

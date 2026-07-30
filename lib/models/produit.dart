@@ -45,6 +45,20 @@ class Produit extends HiveObject {
   @HiveField(10, defaultValue: 0)
   int prixVenteMineur;
 
+  /// Appareil ayant écrit la dernière version connue de cet enregistrement
+  /// (Phase 9, préparation — voir lib/services/device_id_service.dart).
+  /// Chaîne vide pour tout enregistrement créé avant l'introduction de ce
+  /// champ ou en l'absence de synchronisation.
+  @HiveField(11, defaultValue: '')
+  String deviceId;
+
+  /// Horodatage de la dernière modification, utilisé pour la résolution
+  /// « dernier écrit gagne » (voir lib/services/sync_conflict_resolver.dart).
+  /// `null` tant qu'aucune synchronisation n'a jamais touché cet
+  /// enregistrement.
+  @HiveField(12)
+  DateTime? lastModified;
+
   Produit({
     required this.id,
     required this.nom,
@@ -57,6 +71,8 @@ class Produit extends HiveObject {
     this.synchronise = false,
     int? prixAchatMineur,
     int? prixVenteMineur,
+    this.deviceId = '',
+    this.lastModified,
   })  : dateCreation = dateCreation ?? DateTime.now(),
         prixAchatMineur = prixAchatMineur ??
             versUnitesMineures(prixAchat, decimalesPourCodeIso(devise)),
@@ -72,6 +88,7 @@ class Produit extends HiveObject {
     final decimales = decimalesPourCodeIso(devise);
     prixAchatMineur = versUnitesMineures(prixAchat, decimales);
     prixVenteMineur = versUnitesMineures(prixVente, decimales);
+    lastModified = DateTime.now();
   }
 
   double get margeUnitaire => prixVente - prixAchat;
@@ -108,6 +125,8 @@ class Produit extends HiveObject {
         'synchronise': synchronise,
         'prixAchatMineur': prixAchatMineur,
         'prixVenteMineur': prixVenteMineur,
+        'deviceId': deviceId,
+        'lastModified': lastModified?.toIso8601String(),
       };
 
   factory Produit.depuisJson(Map<String, dynamic> json) => Produit(
@@ -124,5 +143,9 @@ class Produit extends HiveObject {
         synchronise: json['synchronise'] as bool? ?? false,
         prixAchatMineur: json['prixAchatMineur'] as int?,
         prixVenteMineur: json['prixVenteMineur'] as int?,
+        deviceId: json['deviceId'] as String? ?? '',
+        lastModified: json['lastModified'] == null
+            ? null
+            : DateTime.parse(json['lastModified'] as String),
       );
 }

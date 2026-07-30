@@ -1,53 +1,51 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'paiement_dette.dart';
+part of 'conflit_synchronisation.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class PaiementDetteAdapter extends TypeAdapter<PaiementDette> {
+class ConflitSynchronisationAdapter
+    extends TypeAdapter<ConflitSynchronisation> {
   @override
-  final int typeId = 7;
+  final int typeId = 10;
 
   @override
-  PaiementDette read(BinaryReader reader) {
+  ConflitSynchronisation read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return PaiementDette(
+    return ConflitSynchronisation(
       id: fields[0] as String,
-      detteId: fields[1] as String,
-      montant: fields[2] as double,
-      date: fields[3] as DateTime,
-      devise: fields[4] as String,
-      montantMineur: fields[5] == null ? 0 : fields[5] as int?,
-      deviceId: fields[6] == null ? '' : fields[6] as String,
-      lastModified: fields[7] as DateTime?,
+      entiteType: fields[1] as String,
+      entiteId: fields[2] as String,
+      dateConflit: fields[3] as DateTime,
+      resolutionRetenue: fields[4] as String,
+      resumeLocal: fields[5] as String?,
+      resumeDistant: fields[6] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, PaiementDette obj) {
+  void write(BinaryWriter writer, ConflitSynchronisation obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.detteId)
+      ..write(obj.entiteType)
       ..writeByte(2)
-      ..write(obj.montant)
+      ..write(obj.entiteId)
       ..writeByte(3)
-      ..write(obj.date)
+      ..write(obj.dateConflit)
       ..writeByte(4)
-      ..write(obj.devise)
+      ..write(obj.resolutionRetenue)
       ..writeByte(5)
-      ..write(obj.montantMineur)
+      ..write(obj.resumeLocal)
       ..writeByte(6)
-      ..write(obj.deviceId)
-      ..writeByte(7)
-      ..write(obj.lastModified);
+      ..write(obj.resumeDistant);
   }
 
   @override
@@ -56,7 +54,7 @@ class PaiementDetteAdapter extends TypeAdapter<PaiementDette> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PaiementDetteAdapter &&
+      other is ConflitSynchronisationAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -24,13 +24,15 @@ class DepenseAdapter extends TypeAdapter<Depense> {
       categorie: fields[4] as CategorieDepense,
       devise: fields[5] as String,
       montantMineur: fields[6] == null ? 0 : fields[6] as int?,
+      deviceId: fields[7] == null ? '' : fields[7] as String,
+      lastModified: fields[8] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Depense obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class DepenseAdapter extends TypeAdapter<Depense> {
       ..writeByte(5)
       ..write(obj.devise)
       ..writeByte(6)
-      ..write(obj.montantMineur);
+      ..write(obj.montantMineur)
+      ..writeByte(7)
+      ..write(obj.deviceId)
+      ..writeByte(8)
+      ..write(obj.lastModified);
   }
 
   @override

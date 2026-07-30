@@ -31,13 +31,15 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       annulee: fields[10] == null ? false : fields[10] as bool,
       dateAnnulation: fields[11] as DateTime?,
       motifAnnulation: fields[12] as String?,
+      deviceId: fields[13] == null ? '' : fields[13] as String,
+      lastModified: fields[14] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -63,7 +65,11 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(11)
       ..write(obj.dateAnnulation)
       ..writeByte(12)
-      ..write(obj.motifAnnulation);
+      ..write(obj.motifAnnulation)
+      ..writeByte(13)
+      ..write(obj.deviceId)
+      ..writeByte(14)
+      ..write(obj.lastModified);
   }
 
   @override

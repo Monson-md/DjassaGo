@@ -9,6 +9,11 @@ class HiveBoxes {
   static const String parametres = 'parametres_box';
   static const String paiementsDette = 'paiements_dette_box';
   static const String depenses = 'depenses_box';
+
+  /// Journal des conflits de synchronisation (Phase 9, préparation
+  /// uniquement — voir lib/services/sync_service.dart). Vide tant qu'aucune
+  /// synchronisation réelle n'est activée.
+  static const String conflitsSynchronisation = 'conflits_synchronisation_box';
 }
 
 /// Clés utilisées dans la box [HiveBoxes.parametres].
@@ -32,4 +37,9 @@ class ParametresKeys {
   /// de risquer une erreur de cast au premier accès à un champ dont le
   /// type a changé entre deux versions de l'app.
   static const String schemaVersion = 'schema_version';
+
+  /// Identifiant stable de cet appareil (UUID v4), généré une seule fois
+  /// par DeviceIdService et utilisé comme départage lors d'un conflit de
+  /// synchronisation (Phase 9 — voir lib/services/sync_conflict_resolver.dart).
+  static const String deviceId = 'device_id';
 }

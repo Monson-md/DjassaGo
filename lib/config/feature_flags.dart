@@ -6,3 +6,10 @@
 /// sert de point d'activation unique le jour où une vraie implémentation
 /// sera réintroduite.
 const bool pubsActivees = false;
+
+/// [syncActivee] : désactivé tant que le propriétaire n'a pas lancé
+/// `flutterfire configure` sur son propre projet Firebase (voir CLAUDE.md
+/// et la note dans lib/services/sync_service.dart). L'app fonctionne
+/// entièrement hors-ligne sans ce drapeau — aucun réglage utilisateur ne
+/// peut l'activer, seul un futur changement de code le pourra.
+const bool syncActivee = false;

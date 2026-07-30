@@ -35,6 +35,15 @@ class Depense extends HiveObject {
   @HiveField(6, defaultValue: 0)
   int montantMineur;
 
+  /// Appareil ayant créé cette dépense (Phase 9, préparation — voir
+  /// lib/services/device_id_service.dart). Une [Depense] est immuable, ce
+  /// champ n'est donc jamais réécrit après sa création.
+  @HiveField(7, defaultValue: '')
+  String deviceId;
+
+  @HiveField(8)
+  DateTime? lastModified;
+
   Depense({
     required this.id,
     required this.libelle,
@@ -43,6 +52,8 @@ class Depense extends HiveObject {
     required this.categorie,
     required this.devise,
     int? montantMineur,
+    this.deviceId = '',
+    this.lastModified,
   }) : montantMineur = montantMineur ??
             versUnitesMineures(montant, decimalesPourCodeIso(devise));
 
@@ -54,6 +65,8 @@ class Depense extends HiveObject {
         'categorie': categorie.name,
         'devise': devise,
         'montantMineur': montantMineur,
+        'deviceId': deviceId,
+        'lastModified': lastModified?.toIso8601String(),
       };
 
   factory Depense.depuisJson(Map<String, dynamic> json) => Depense(
@@ -64,5 +77,9 @@ class Depense extends HiveObject {
         categorie: CategorieDepense.values.byName(json['categorie'] as String),
         devise: json['devise'] as String,
         montantMineur: json['montantMineur'] as int?,
+        deviceId: json['deviceId'] as String? ?? '',
+        lastModified: json['lastModified'] == null
+            ? null
+            : DateTime.parse(json['lastModified'] as String),
       );
 }

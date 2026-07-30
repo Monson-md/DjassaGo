@@ -64,6 +64,16 @@ class Transaction extends HiveObject {
   @HiveField(12)
   String? motifAnnulation;
 
+  /// Appareil ayant écrit la dernière version connue de cette transaction
+  /// (Phase 9, préparation — voir lib/services/device_id_service.dart).
+  @HiveField(13, defaultValue: '')
+  String deviceId;
+
+  /// Horodatage de la dernière modification, utilisé pour la résolution
+  /// « dernier écrit gagne » (voir lib/services/sync_conflict_resolver.dart).
+  @HiveField(14)
+  DateTime? lastModified;
+
   Transaction({
     required this.id,
     required this.date,
@@ -78,6 +88,8 @@ class Transaction extends HiveObject {
     this.annulee = false,
     this.dateAnnulation,
     this.motifAnnulation,
+    this.deviceId = '',
+    this.lastModified,
   })  : montantTotalMineur = montantTotalMineur ??
             versUnitesMineures(montantTotal, decimalesPourCodeIso(devise)),
         margeBruteMineur = margeBruteMineur ??
@@ -90,6 +102,7 @@ class Transaction extends HiveObject {
     annulee = true;
     dateAnnulation = date ?? DateTime.now();
     motifAnnulation = motif;
+    lastModified = DateTime.now();
   }
 
   Map<String, dynamic> toMap() {
@@ -129,6 +142,8 @@ class Transaction extends HiveObject {
         'annulee': annulee,
         'dateAnnulation': dateAnnulation?.toIso8601String(),
         'motifAnnulation': motifAnnulation,
+        'deviceId': deviceId,
+        'lastModified': lastModified?.toIso8601String(),
       };
 
   factory Transaction.depuisJson(Map<String, dynamic> json) => Transaction(
@@ -156,5 +171,9 @@ class Transaction extends HiveObject {
             ? null
             : DateTime.parse(json['dateAnnulation'] as String),
         motifAnnulation: json['motifAnnulation'] as String?,
+        deviceId: json['deviceId'] as String? ?? '',
+        lastModified: json['lastModified'] == null
+            ? null
+            : DateTime.parse(json['lastModified'] as String),
       );
 }

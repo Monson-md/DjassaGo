@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../models/produit.dart';
+import 'device_id_service.dart';
 import 'hive_service.dart';
 
 /// Gère le CRUD des produits ainsi que les mouvements de stock.
@@ -42,6 +43,8 @@ class ProduitService {
       prixVente: prixVente,
       stockActuel: stockActuel,
       devise: devise,
+      deviceId: DeviceIdService.obtenir(),
+      lastModified: DateTime.now(),
     );
     await HiveService.produitsBox.put(produit.id, produit);
     return produit;
@@ -49,6 +52,8 @@ class ProduitService {
 
   Future<void> modifier(Produit produit) async {
     produit.dateModification = DateTime.now();
+    produit.deviceId = DeviceIdService.obtenir();
+    produit.lastModified = DateTime.now();
     await produit.save();
   }
 
@@ -67,6 +72,8 @@ class ProduitService {
       throw Exception('Stock insuffisant pour ${produit.nom}');
     }
     produit.stockActuel -= quantite;
+    produit.deviceId = DeviceIdService.obtenir();
+    produit.lastModified = DateTime.now();
     await produit.save();
   }
 
@@ -77,6 +84,8 @@ class ProduitService {
       throw Exception('Produit introuvable');
     }
     produit.stockActuel += quantite;
+    produit.deviceId = DeviceIdService.obtenir();
+    produit.lastModified = DateTime.now();
     await produit.save();
   }
 }

@@ -9,6 +9,7 @@ import '../utils/devises_disponibles.dart';
 import '../utils/indicatifs_telephoniques.dart';
 import '../utils/money.dart';
 import '../utils/telephone.dart';
+import 'device_id_service.dart';
 import 'hive_service.dart';
 
 /// Gère le carnet de dettes : CRUD, paiements, et génération de messages
@@ -73,6 +74,8 @@ class DetteService {
       devise: devise,
       note: note,
       transactionId: transactionId,
+      deviceId: DeviceIdService.obtenir(),
+      lastModified: DateTime.now(),
     );
     await HiveService.dettesBox.put(dette.id, dette);
     return dette;
@@ -89,6 +92,7 @@ class DetteService {
     dette.statut = dette.montantDu <= 0
         ? StatutDette.payee
         : StatutDette.partiellementPayee;
+    dette.deviceId = DeviceIdService.obtenir();
     await dette.save();
 
     final paiement = PaiementDette(
@@ -97,6 +101,8 @@ class DetteService {
       montant: montantPaye,
       date: DateTime.now(),
       devise: dette.devise,
+      deviceId: DeviceIdService.obtenir(),
+      lastModified: DateTime.now(),
     );
     await HiveService.paiementsDetteBox.put(paiement.id, paiement);
   }
