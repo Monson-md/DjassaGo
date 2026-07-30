@@ -1,3 +1,5 @@
+import '../config/feature_flags.dart';
+
 /// Service publicitaire neutre.
 ///
 /// Google Mobile Ads a été retiré du projet (voir CHECKLIST.md) : son SDK
@@ -7,13 +9,18 @@
 /// implémentation ne charge aucun SDK publicitaire et ne fait jamais
 /// rien — elle garde seulement l'interface utilisée ailleurs dans le
 /// code, pour qu'une vraie implémentation puisse être réintroduite
-/// derrière la même API le jour où AdMob sera reconfiguré proprement.
+/// derrière la même API le jour où AdMob sera reconfiguré proprement,
+/// gardée derrière [pubsActivees].
 class AdService {
   AdService._();
 
   static final AdService instance = AdService._();
 
-  Future<void> initialiser() async {}
+  Future<void> initialiser() async {
+    if (!pubsActivees) return;
+  }
 
-  Future<void> afficherInterstitielSiOpportun() async {}
+  Future<void> afficherInterstitielSiOpportun() async {
+    if (!pubsActivees) return;
+  }
 }
