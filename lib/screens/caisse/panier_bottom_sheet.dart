@@ -5,6 +5,7 @@ import '../../models/mode_paiement.dart';
 import '../../models/transaction.dart' as model;
 import '../../providers/caisse_provider.dart';
 import '../../providers/currency_provider.dart';
+import '../../providers/dette_provider.dart';
 import '../../providers/produit_provider.dart';
 import '../../utils/money.dart';
 import '../../widgets/boutons_caisse.dart';
@@ -53,6 +54,7 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
     );
     if (transaction == null || !mounted) return;
     context.read<ProduitProvider>().charger();
+    context.read<DetteProvider>().charger();
     Navigator.of(context).pop(true);
     _afficherRecu(transaction);
   }

@@ -104,6 +104,15 @@ class JournalVentesScreen extends StatelessWidget {
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final transaction = transactions[index];
+                final estCredit =
+                    !transaction.annulee &&
+                        transaction.modePaiement == ModePaiement.credit;
+                final nomClient = estCredit
+                    ? context
+                        .read<DetteProvider>()
+                        .trouverParTransactionId(transaction.id)
+                        ?.nomClient
+                    : null;
                 return ListTile(
                   title: Text(
                     formaterMontantMineur(
@@ -123,7 +132,8 @@ class JournalVentesScreen extends StatelessWidget {
                     transaction.annulee
                         ? "Annulée · ${transaction.motifAnnulation ?? ''}"
                         : '${formaterDate(transaction.date)} ${formaterHeure(transaction.date)} · '
-                            '${_libelleModePaiement(transaction.modePaiement)}',
+                            '${_libelleModePaiement(transaction.modePaiement)}'
+                            '${nomClient != null ? ' · $nomClient' : ''}',
                   ),
                   trailing: transaction.annulee
                       ? const Icon(Icons.block, color: Colors.grey)

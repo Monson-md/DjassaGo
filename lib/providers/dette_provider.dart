@@ -54,6 +54,9 @@ class DetteProvider extends ChangeNotifier {
     charger();
   }
 
+  Dette? trouverParTransactionId(String transactionId) =>
+      _service.trouverParTransactionId(transactionId);
+
   String genererMessageRelance(Dette dette) =>
       _service.genererMessageRelance(dette);
 

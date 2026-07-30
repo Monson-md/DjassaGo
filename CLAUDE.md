@@ -36,7 +36,7 @@ Lis ces fichiers avant de commencer quoi que ce soit.
 2. **Ne jamais changer un `typeId` Hive existant ni renuméroter un `@HiveField`.** On ne peut qu'ajouter de nouveaux champs, avec de nouveaux index, nullables ou avec valeur par défaut.
 3. **Aucune publicité sur l'écran Caisse**, sous aucune forme. La rapidité de vente est le cœur du produit.
 4. **Aucun montant affiché sans passer par le formateur central.** Jamais de « 1 500,00 FCFA ».
-5. **Une phase à la fois.** À la fin de chaque phase : `flutter analyze` à zéro erreur, `flutter test` au vert, commit, push — puis **arrêt**. Le propriétaire installe l'APK et teste sur son téléphone avant qu'on enchaîne.
+5. **Phases enchaînées.** À la fin de chaque phase : `flutter analyze` à zéro erreur, `flutter test` au vert, mise à jour de l'État actuel, commit, push — puis **enchaîner directement sur la phase suivante sans s'arrêter**. À la toute fin (dernière phase traitée dans la session), donner la liste complète et précise de ce que le propriétaire doit vérifier sur son téléphone pour chaque phase livrée.
 6. **Aucun nouveau plugin natif sans validation explicite.** Flutter 3.44 casse plusieurs plugins qui n'ont pas suivi la migration Built-in Kotlin. En cas de doute, préférer du Dart pur ou un paquet maintenu par l'équipe Flutter.
 7. **Avant chaque push : `git status`.** Tout ce que `pubspec.yaml` référence doit être suivi par Git. La CI ne voit que ce qui est commité — une déclaration d'asset sans le fichier casse le build.
 8. **Firebase reste dehors** jusqu'à la Phase 9, et uniquement après que le propriétaire ait lancé `flutterfire configure`. Le fichier `google-services.json` présent est inerte et ne doit pas être commité.

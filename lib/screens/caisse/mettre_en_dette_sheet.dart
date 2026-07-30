@@ -118,11 +118,9 @@ class _MettreEnDetteSheetState extends State<MettreEnDetteSheet> {
                 controller: _telephoneController,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  labelText: 'Téléphone (WhatsApp/SMS)',
+                  labelText: 'Téléphone (WhatsApp/SMS) — optionnel',
                   hintText: 'ex: +2250700000000',
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Requis' : null,
               ),
               const SizedBox(height: 20),
               FilledButton(

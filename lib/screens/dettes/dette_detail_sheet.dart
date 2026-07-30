@@ -58,6 +58,7 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
   Widget build(BuildContext context) {
     final devise = context.watch<CurrencyProvider>().devise;
     final message = context.read<DetteProvider>().genererMessageRelance(widget.dette);
+    final aUnTelephone = widget.dette.telephone.trim().isNotEmpty;
 
     return SafeArea(
       child: Padding(
@@ -92,7 +93,7 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _envoyerWhatsApp,
+                    onPressed: aUnTelephone ? _envoyerWhatsApp : null,
                     icon: const Icon(Icons.chat, color: Colors.green),
                     label: const Text('WhatsApp'),
                   ),
@@ -100,13 +101,20 @@ class _DetteDetailSheetState extends State<DetteDetailSheet> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _envoyerSms,
+                    onPressed: aUnTelephone ? _envoyerSms : null,
                     icon: const Icon(Icons.sms),
                     label: const Text('SMS'),
                   ),
                 ),
               ],
             ),
+            if (!aUnTelephone) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Aucun numéro enregistré pour ce client.',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
+            ],
             const Divider(height: 32),
             Text('Enregistrer un paiement',
                 style: Theme.of(context).textTheme.titleSmall),
