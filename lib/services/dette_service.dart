@@ -24,6 +24,18 @@ class DetteService {
         .toList();
   }
 
+  /// Retrouve la dette générée par une vente à crédit (voir
+  /// CaisseService.finaliserVenteACredit / annulerTransaction). `null` si la
+  /// transaction n'a pas de dette liée, ou si elle a déjà été supprimée.
+  Dette? trouverParTransactionId(String transactionId) {
+    try {
+      return HiveService.dettesBox.values
+          .firstWhere((d) => d.transactionId == transactionId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   double totalDettesEnCours() {
     return listerEnCours().fold<double>(0, (s, d) => s + d.montantDu);
   }

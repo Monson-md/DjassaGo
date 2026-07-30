@@ -28,13 +28,16 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       beneficeNetMineur: fields[8] == null ? 0 : fields[8] as int?,
       modePaiement:
           fields[9] == null ? ModePaiement.especes : fields[9] as ModePaiement,
+      annulee: fields[10] == null ? false : fields[10] as bool,
+      dateAnnulation: fields[11] as DateTime?,
+      motifAnnulation: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -54,7 +57,13 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(8)
       ..write(obj.beneficeNetMineur)
       ..writeByte(9)
-      ..write(obj.modePaiement);
+      ..write(obj.modePaiement)
+      ..writeByte(10)
+      ..write(obj.annulee)
+      ..writeByte(11)
+      ..write(obj.dateAnnulation)
+      ..writeByte(12)
+      ..write(obj.motifAnnulation);
   }
 
   @override

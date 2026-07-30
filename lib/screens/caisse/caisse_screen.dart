@@ -8,6 +8,7 @@ import '../../providers/produit_provider.dart';
 import '../../services/ad_service.dart';
 import '../../utils/devises_disponibles.dart';
 import '../../utils/money.dart';
+import 'journal_ventes_screen.dart';
 import 'panier_bottom_sheet.dart';
 
 /// Écran de Caisse : cœur de l'application.
@@ -61,7 +62,18 @@ class _CaisseScreenState extends State<CaisseScreen> {
             .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Caisse')),
+      appBar: AppBar(
+        title: const Text('Caisse'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Journal des ventes',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const JournalVentesScreen()),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           _StatsDuJour(devise: devise),

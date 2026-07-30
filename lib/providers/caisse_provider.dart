@@ -35,6 +35,9 @@ class CaisseProvider extends ChangeNotifier {
 
   List<model.Transaction> transactionsDuJour() => _service.transactionsDuJour();
 
+  List<model.Transaction> toutesLesTransactions() =>
+      _service.toutesLesTransactions();
+
   void ajouterAuPanier(Produit produit, {int quantite = 1}) {
     final indexExistant =
         _panier.indexWhere((i) => i.produitId == produit.id);
@@ -95,6 +98,18 @@ class CaisseProvider extends ChangeNotifier {
       telephone: telephone,
     );
     _panier.clear();
+    notifyListeners();
+    return transaction;
+  }
+
+  Future<model.Transaction> annulerTransaction({
+    required String transactionId,
+    required String motif,
+  }) async {
+    final transaction = await _service.annulerTransaction(
+      transactionId: transactionId,
+      motif: motif,
+    );
     notifyListeners();
     return transaction;
   }

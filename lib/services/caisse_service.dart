@@ -107,10 +107,58 @@ class CaisseService {
     return transaction;
   }
 
+  /// Annule une vente : remet en stock chaque article vendu et marque la
+  /// transaction comme annulée (voir [model.Transaction.marquerAnnulee]) —
+  /// elle n'est jamais supprimée physiquement, seulement exclue des
+  /// statistiques du jour ([transactionsDuJour]) tout en restant
+  /// consultable dans le journal ([toutesLesTransactions]).
+  ///
+  /// Si la vente était à crédit, la dette liée est supprimée (la vente est
+  /// nulle, il n'y a plus rien à recouvrer) — mais seulement si aucun
+  /// paiement n'a encore été reçu dessus. Dans le cas contraire,
+  /// l'annulation est bloquée : supprimer la dette ferait disparaître un
+  /// encaissement réel déjà en caisse.
+  Future<model.Transaction> annulerTransaction({
+    required String transactionId,
+    required String motif,
+  }) async {
+    final transaction = HiveService.transactionsBox.get(transactionId);
+    if (transaction == null) {
+      throw Exception('Transaction introuvable');
+    }
+    if (transaction.annulee) {
+      throw Exception('Cette vente est déjà annulée');
+    }
+
+    if (transaction.modePaiement == ModePaiement.credit) {
+      final dette = _detteService.trouverParTransactionId(transaction.id);
+      if (dette != null) {
+        if (_detteService.paiementsPour(dette.id).isNotEmpty) {
+          throw Exception(
+              "Impossible d'annuler : des paiements ont déjà été reçus sur la dette liée.");
+        }
+        await _detteService.supprimer(dette.id);
+      }
+    }
+
+    for (final item in transaction.itemsVendus) {
+      await _produitService.reapprovisionner(item.produitId, item.quantite);
+    }
+
+    transaction.marquerAnnulee(motif: motif);
+    await transaction.save();
+    return transaction;
+  }
+
+  /// Transactions du jour, hors ventes annulées (voir
+  /// [model.Transaction.annulee]) : source des statistiques de caisse.
+  /// Pour un journal incluant les ventes annulées, voir
+  /// [toutesLesTransactions].
   List<model.Transaction> transactionsDuJour({DateTime? jour}) {
     final j = jour ?? DateTime.now();
     return HiveService.transactionsBox.values
         .where((t) =>
+            !t.annulee &&
             t.date.year == j.year &&
             t.date.month == j.month &&
             t.date.day == j.day)

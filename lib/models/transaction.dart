@@ -48,6 +48,19 @@ class Transaction extends HiveObject {
   @HiveField(9, defaultValue: ModePaiement.especes)
   ModePaiement modePaiement;
 
+  /// Vrai si la vente a été annulée (voir [marquerAnnulee]). Une
+  /// transaction annulée n'est **jamais** supprimée physiquement : elle est
+  /// exclue des statistiques (CaisseService.transactionsDuJour) mais reste
+  /// consultable dans le journal des ventes.
+  @HiveField(10, defaultValue: false)
+  bool annulee;
+
+  @HiveField(11)
+  DateTime? dateAnnulation;
+
+  @HiveField(12)
+  String? motifAnnulation;
+
   Transaction({
     required this.id,
     required this.date,
@@ -59,10 +72,22 @@ class Transaction extends HiveObject {
     int? montantTotalMineur,
     int? beneficeNetMineur,
     this.modePaiement = ModePaiement.especes,
+    this.annulee = false,
+    this.dateAnnulation,
+    this.motifAnnulation,
   })  : montantTotalMineur = montantTotalMineur ??
             versUnitesMineures(montantTotal, decimalesPourCodeIso(devise)),
         beneficeNetMineur = beneficeNetMineur ??
             versUnitesMineures(beneficeNet, decimalesPourCodeIso(devise));
+
+  /// Marque la vente comme annulée. Le stock doit être remis par
+  /// l'appelant (voir CaisseService.annulerTransaction) avant d'appeler
+  /// cette méthode : elle ne fait que figer l'état de la transaction.
+  void marquerAnnulee({required String motif, DateTime? date}) {
+    annulee = true;
+    dateAnnulation = date ?? DateTime.now();
+    motifAnnulation = motif;
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -80,6 +105,7 @@ class Transaction extends HiveObject {
                 'prixUnitaireAchat': i.prixUnitaireAchat,
               })
           .toList(),
+      'annulee': annulee,
     };
   }
 
@@ -97,6 +123,9 @@ class Transaction extends HiveObject {
         'montantTotalMineur': montantTotalMineur,
         'beneficeNetMineur': beneficeNetMineur,
         'modePaiement': modePaiement.name,
+        'annulee': annulee,
+        'dateAnnulation': dateAnnulation?.toIso8601String(),
+        'motifAnnulation': motifAnnulation,
       };
 
   factory Transaction.depuisJson(Map<String, dynamic> json) => Transaction(
@@ -114,5 +143,10 @@ class Transaction extends HiveObject {
         modePaiement: json['modePaiement'] == null
             ? ModePaiement.especes
             : ModePaiement.values.byName(json['modePaiement'] as String),
+        annulee: json['annulee'] as bool? ?? false,
+        dateAnnulation: json['dateAnnulation'] == null
+            ? null
+            : DateTime.parse(json['dateAnnulation'] as String),
+        motifAnnulation: json['motifAnnulation'] as String?,
       );
 }
