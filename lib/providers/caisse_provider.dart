@@ -4,10 +4,11 @@ import '../models/item_vendu.dart';
 import '../models/produit.dart';
 import '../models/transaction.dart' as model;
 import '../services/caisse_service.dart';
+import '../utils/periodes.dart';
 
 /// Gère le panier en cours et les statistiques de caisse du jour.
 /// Pensé pour un affichage instantané : chaque ajout/retrait recalcule
-/// immédiatement le total et le bénéfice net sans appel réseau.
+/// immédiatement le total et la marge brute sans appel réseau.
 class CaisseProvider extends ChangeNotifier {
   final CaisseService _service = CaisseService();
 
@@ -17,21 +18,26 @@ class CaisseProvider extends ChangeNotifier {
   double get totalPanier =>
       _panier.fold<double>(0, (s, i) => s + i.sousTotal);
 
-  double get beneficePanier =>
-      _panier.fold<double>(0, (s, i) => s + i.benefice);
+  double get margeBrutePanier =>
+      _panier.fold<double>(0, (s, i) => s + i.margeBrute);
 
   int get nombreArticlesPanier =>
       _panier.fold<int>(0, (s, i) => s + i.quantite);
 
   double totalDuJour() => _service.totalDuJour();
 
-  double beneficeNetDuJour() => _service.beneficeNetDuJour();
+  double margeBruteDuJour() => _service.margeBruteDuJour();
 
   int totalDuJourMineur() => _service.totalDuJourMineur();
 
-  int beneficeNetDuJourMineur() => _service.beneficeNetDuJourMineur();
+  int margeBruteDuJourMineur() => _service.margeBruteDuJourMineur();
 
   int encaissementsDuJourMineur() => _service.encaissementsDuJourMineur();
+
+  int totalMineurSur(Periode periode) => _service.totalMineurSur(periode);
+
+  int margeBruteMineurSur(Periode periode) =>
+      _service.margeBruteMineurSur(periode);
 
   List<model.Transaction> transactionsDuJour() => _service.transactionsDuJour();
 

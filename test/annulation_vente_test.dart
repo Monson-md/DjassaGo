@@ -85,8 +85,8 @@ void main() {
 
     // Statistiques : seule la vente restante compte désormais.
     expect(caisseService.totalDuJourMineur(), venteConservee.montantTotalMineur);
-    expect(caisseService.beneficeNetDuJourMineur(),
-        venteConservee.beneficeNetMineur);
+    expect(caisseService.margeBruteDuJourMineur(),
+        venteConservee.margeBruteMineur);
 
     // Journal : les deux ventes restent consultables.
     final journal = caisseService.toutesLesTransactions();

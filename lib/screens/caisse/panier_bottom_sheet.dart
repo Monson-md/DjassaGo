@@ -80,8 +80,8 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
               symbole: devise.symbole,
             )}'),
             const SizedBox(height: 4),
-            Text('Bénéfice net : ${formaterMontantMineur(
-              transaction.beneficeNetMineur,
+            Text('Marge brute : ${formaterMontantMineur(
+              transaction.margeBruteMineur,
               decimales: devise.decimales,
               symbole: devise.symbole,
             )}'),

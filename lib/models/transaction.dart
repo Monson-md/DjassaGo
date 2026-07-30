@@ -22,7 +22,7 @@ class Transaction extends HiveObject {
   double montantTotal;
 
   @HiveField(4)
-  double beneficeNet;
+  double margeBrute;
 
   @HiveField(5)
   String devise;
@@ -34,13 +34,16 @@ class Transaction extends HiveObject {
   /// source de vérité pour tout nouveau calcul, sans erreur d'arrondi
   /// flottant. Valeur par défaut 0 pour les transactions enregistrées
   /// avant l'introduction de ce champ — elles restent consultables via
-  /// [montantTotal]/[beneficeNet] mais sont exclues des agrégations en
+  /// [montantTotal]/[margeBrute] mais sont exclues des agrégations en
   /// unités mineures tant qu'elles n'ont pas cette valeur figée.
   @HiveField(7, defaultValue: 0)
   int montantTotalMineur;
 
+  /// Nommée `margeBrute` (et non « bénéfice net ») car aucune charge du
+  /// commerce n'est déduite ici — voir DepenseService pour les dépenses
+  /// et CaisseService pour le résultat net (Phase 7 de docs/PHASES.md).
   @HiveField(8, defaultValue: 0)
-  int beneficeNetMineur;
+  int margeBruteMineur;
 
   /// Moyen de règlement de la vente. Valeur par défaut `especes` pour les
   /// transactions enregistrées avant l'introduction de ce champ — elles
@@ -66,19 +69,19 @@ class Transaction extends HiveObject {
     required this.date,
     required this.itemsVendus,
     required this.montantTotal,
-    required this.beneficeNet,
+    required this.margeBrute,
     required this.devise,
     this.synchronise = false,
     int? montantTotalMineur,
-    int? beneficeNetMineur,
+    int? margeBruteMineur,
     this.modePaiement = ModePaiement.especes,
     this.annulee = false,
     this.dateAnnulation,
     this.motifAnnulation,
   })  : montantTotalMineur = montantTotalMineur ??
             versUnitesMineures(montantTotal, decimalesPourCodeIso(devise)),
-        beneficeNetMineur = beneficeNetMineur ??
-            versUnitesMineures(beneficeNet, decimalesPourCodeIso(devise));
+        margeBruteMineur = margeBruteMineur ??
+            versUnitesMineures(margeBrute, decimalesPourCodeIso(devise));
 
   /// Marque la vente comme annulée. Le stock doit être remis par
   /// l'appelant (voir CaisseService.annulerTransaction) avant d'appeler
@@ -94,7 +97,7 @@ class Transaction extends HiveObject {
       'id': id,
       'date': date.toIso8601String(),
       'montantTotal': montantTotal,
-      'beneficeNet': beneficeNet,
+      'margeBrute': margeBrute,
       'devise': devise,
       'itemsVendus': itemsVendus
           .map((i) => {
@@ -117,11 +120,11 @@ class Transaction extends HiveObject {
         'date': date.toIso8601String(),
         'itemsVendus': itemsVendus.map((i) => i.versJson()).toList(),
         'montantTotal': montantTotal,
-        'beneficeNet': beneficeNet,
+        'margeBrute': margeBrute,
         'devise': devise,
         'synchronise': synchronise,
         'montantTotalMineur': montantTotalMineur,
-        'beneficeNetMineur': beneficeNetMineur,
+        'margeBruteMineur': margeBruteMineur,
         'modePaiement': modePaiement.name,
         'annulee': annulee,
         'dateAnnulation': dateAnnulation?.toIso8601String(),
@@ -135,11 +138,16 @@ class Transaction extends HiveObject {
             .map((i) => ItemVendu.depuisJson(i as Map<String, dynamic>))
             .toList(),
         montantTotal: (json['montantTotal'] as num).toDouble(),
-        beneficeNet: (json['beneficeNet'] as num).toDouble(),
+        // 'beneficeNet' : nom de champ utilisé dans les sauvegardes
+        // antérieures à la Phase 7 (renommage « bénéfice net » -> « marge
+        // brute »), conservé en repli pour rester compatible à l'import.
+        margeBrute:
+            ((json['margeBrute'] ?? json['beneficeNet']) as num).toDouble(),
         devise: json['devise'] as String,
         synchronise: json['synchronise'] as bool? ?? false,
         montantTotalMineur: json['montantTotalMineur'] as int?,
-        beneficeNetMineur: json['beneficeNetMineur'] as int?,
+        margeBruteMineur:
+            (json['margeBruteMineur'] ?? json['beneficeNetMineur']) as int?,
         modePaiement: json['modePaiement'] == null
             ? ModePaiement.especes
             : ModePaiement.values.byName(json['modePaiement'] as String),

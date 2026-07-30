@@ -5,12 +5,14 @@ import '../models/mode_paiement.dart';
 import '../models/transaction.dart' as model;
 import '../utils/devises_disponibles.dart';
 import '../utils/money.dart';
+import '../utils/periodes.dart';
 import 'dette_service.dart';
 import 'hive_service.dart';
 import 'produit_service.dart';
 
 /// Gère l'enregistrement des ventes (transactions) et les statistiques
-/// de caisse (total et bénéfice net du jour).
+/// de caisse (total et marge brute du jour, et par période pour le
+/// tableau de bord — voir [totalMineurSur]/[margeBruteMineurSur]).
 class CaisseService {
   static const _uuid = Uuid();
 
@@ -57,21 +59,21 @@ class CaisseService {
     }
 
     final montantTotal = panier.fold<double>(0, (s, i) => s + i.sousTotal);
-    final beneficeNet = panier.fold<double>(0, (s, i) => s + i.benefice);
+    final margeBrute = panier.fold<double>(0, (s, i) => s + i.margeBrute);
     final montantTotalMineur =
         panier.fold<int>(0, (s, i) => s + i.sousTotalMineur);
-    final beneficeNetMineur =
-        panier.fold<int>(0, (s, i) => s + i.beneficeMineur);
+    final margeBruteMineur =
+        panier.fold<int>(0, (s, i) => s + i.margeBruteMineur);
 
     final transaction = model.Transaction(
       id: _uuid.v4(),
       date: DateTime.now(),
       itemsVendus: panier,
       montantTotal: montantTotal,
-      beneficeNet: beneficeNet,
+      margeBrute: margeBrute,
       devise: devise,
       montantTotalMineur: montantTotalMineur,
-      beneficeNetMineur: beneficeNetMineur,
+      margeBruteMineur: margeBruteMineur,
       modePaiement: modePaiement,
     );
 
@@ -171,9 +173,9 @@ class CaisseService {
         .fold<double>(0, (s, t) => s + t.montantTotal);
   }
 
-  double beneficeNetDuJour({DateTime? jour}) {
+  double margeBruteDuJour({DateTime? jour}) {
     return transactionsDuJour(jour: jour)
-        .fold<double>(0, (s, t) => s + t.beneficeNet);
+        .fold<double>(0, (s, t) => s + t.margeBrute);
   }
 
   /// Additionne les montants en unités mineures (entiers) : source de
@@ -188,11 +190,11 @@ class CaisseService {
             s + _mineurOuRecalcule(t.montantTotalMineur, t.montantTotal, t.devise));
   }
 
-  int beneficeNetDuJourMineur({DateTime? jour}) {
+  int margeBruteDuJourMineur({DateTime? jour}) {
     return transactionsDuJour(jour: jour).fold<int>(
         0,
         (s, t) =>
-            s + _mineurOuRecalcule(t.beneficeNetMineur, t.beneficeNet, t.devise));
+            s + _mineurOuRecalcule(t.margeBruteMineur, t.margeBrute, t.devise));
   }
 
   /// Encaissements réels du jour, en unités mineures : à distinguer du
@@ -222,6 +224,36 @@ class CaisseService {
   int _mineurOuRecalcule(int mineur, double montant, String devise) {
     if (mineur != 0 || montant == 0) return mineur;
     return versUnitesMineures(montant, decimalesPourCodeIso(devise));
+  }
+
+  /// Transactions non annulées dont la date tombe dans [plage] — sert au
+  /// tableau de bord par période (jour/semaine/mois), séparé de
+  /// [transactionsDuJour] pour ne jamais modifier le comportement déjà
+  /// testé de l'écran Caisse.
+  List<model.Transaction> _transactionsSur(PlagePeriode plage) {
+    return HiveService.transactionsBox.values
+        .where((t) => !t.annulee && plage.contient(t.date))
+        .toList();
+  }
+
+  /// Chiffre d'affaires sur une [Periode] (jour, semaine ou mois),
+  /// utilisé par le tableau de bord de la Phase 7 (voir DepenseService
+  /// pour les dépenses de la même période, et [margeBruteMineurSur] pour
+  /// la marge).
+  int totalMineurSur(Periode periode, {DateTime? reference}) {
+    final plage = plagePour(periode, reference: reference);
+    return _transactionsSur(plage).fold<int>(
+        0,
+        (s, t) =>
+            s + _mineurOuRecalcule(t.montantTotalMineur, t.montantTotal, t.devise));
+  }
+
+  int margeBruteMineurSur(Periode periode, {DateTime? reference}) {
+    final plage = plagePour(periode, reference: reference);
+    return _transactionsSur(plage).fold<int>(
+        0,
+        (s, t) =>
+            s + _mineurOuRecalcule(t.margeBruteMineur, t.margeBrute, t.devise));
   }
 
   List<model.Transaction> toutesLesTransactions() {

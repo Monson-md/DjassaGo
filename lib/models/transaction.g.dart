@@ -21,11 +21,11 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       date: fields[1] as DateTime,
       itemsVendus: (fields[2] as List).cast<ItemVendu>(),
       montantTotal: fields[3] as double,
-      beneficeNet: fields[4] as double,
+      margeBrute: fields[4] as double,
       devise: fields[5] as String,
       synchronise: fields[6] as bool,
       montantTotalMineur: fields[7] == null ? 0 : fields[7] as int?,
-      beneficeNetMineur: fields[8] == null ? 0 : fields[8] as int?,
+      margeBruteMineur: fields[8] == null ? 0 : fields[8] as int?,
       modePaiement:
           fields[9] == null ? ModePaiement.especes : fields[9] as ModePaiement,
       annulee: fields[10] == null ? false : fields[10] as bool,
@@ -47,7 +47,7 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(3)
       ..write(obj.montantTotal)
       ..writeByte(4)
-      ..write(obj.beneficeNet)
+      ..write(obj.margeBrute)
       ..writeByte(5)
       ..write(obj.devise)
       ..writeByte(6)
@@ -55,7 +55,7 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(7)
       ..write(obj.montantTotalMineur)
       ..writeByte(8)
-      ..write(obj.beneficeNetMineur)
+      ..write(obj.margeBruteMineur)
       ..writeByte(9)
       ..write(obj.modePaiement)
       ..writeByte(10)

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../caisse/caisse_screen.dart';
 import '../dettes/dettes_screen.dart';
 import '../parametres/parametres_screen.dart';
+import '../rapport/rapport_screen.dart';
 import '../stock/stock_screen.dart';
 
 /// Coquille de navigation principale de l'application, avec la Caisse
@@ -21,6 +22,7 @@ class _AccueilScreenState extends State<AccueilScreen> {
     CaisseScreen(),
     DettesScreen(),
     StockScreen(),
+    RapportScreen(),
     ParametresScreen(),
   ];
 
@@ -46,6 +48,11 @@ class _AccueilScreenState extends State<AccueilScreen> {
             icon: Icon(Icons.inventory_2_outlined),
             selectedIcon: Icon(Icons.inventory_2),
             label: 'Stock',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart),
+            label: 'Rapport',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

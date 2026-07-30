@@ -42,11 +42,11 @@ class ItemVendu extends HiveObject {
 
   double get sousTotal => prixUnitaireVente * quantite;
 
-  double get benefice => (prixUnitaireVente - prixUnitaireAchat) * quantite;
+  double get margeBrute => (prixUnitaireVente - prixUnitaireAchat) * quantite;
 
   int get sousTotalMineur => prixUnitaireVenteMineur * quantite;
 
-  int get beneficeMineur =>
+  int get margeBruteMineur =>
       (prixUnitaireVenteMineur - prixUnitaireAchatMineur) * quantite;
 
   /// Sérialisation complète et sans perte pour l'export/import de

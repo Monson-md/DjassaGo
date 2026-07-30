@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/caisse_provider.dart';
 import 'providers/currency_provider.dart';
+import 'providers/depense_provider.dart';
 import 'providers/dette_provider.dart';
 import 'providers/pin_provider.dart';
 import 'providers/produit_provider.dart';
@@ -242,6 +243,7 @@ class CaisseDePocheApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CaisseProvider()),
         ChangeNotifierProvider(create: (_) => DetteProvider()),
         ChangeNotifierProvider(create: (_) => PinProvider()),
+        ChangeNotifierProvider(create: (_) => DepenseProvider()),
       ],
       child: MaterialApp(
         title: 'Caisse de Poche',

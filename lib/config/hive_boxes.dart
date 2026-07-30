@@ -8,6 +8,7 @@ class HiveBoxes {
   static const String devises = 'devises_box';
   static const String parametres = 'parametres_box';
   static const String paiementsDette = 'paiements_dette_box';
+  static const String depenses = 'depenses_box';
 }
 
 /// Clés utilisées dans la box [HiveBoxes.parametres].

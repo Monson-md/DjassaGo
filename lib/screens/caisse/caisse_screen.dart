@@ -169,9 +169,9 @@ class _StatsDuJour extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _CarteStat(
-                  titre: 'Bénéfice net',
+                  titre: 'Marge brute',
                   valeur: formaterMontantMineur(
-                    caisse.beneficeNetDuJourMineur(),
+                    caisse.margeBruteDuJourMineur(),
                     decimales: devise.decimales,
                     symbole: devise.symbole,
                   ),

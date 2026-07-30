@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../config/hive_boxes.dart';
+import '../models/categorie_depense.dart';
+import '../models/depense.dart';
 import '../models/devise.dart';
 import '../models/dette.dart';
 import '../models/item_vendu.dart';
@@ -35,6 +37,8 @@ class HiveService {
     _registerAdapterSiAbsent(5, DetteAdapter());
     _registerAdapterSiAbsent(6, ModePaiementAdapter());
     _registerAdapterSiAbsent(7, PaiementDetteAdapter());
+    _registerAdapterSiAbsent(8, CategorieDepenseAdapter());
+    _registerAdapterSiAbsent(9, DepenseAdapter());
 
     // La box de paramètres est ouverte en premier et seule : elle stocke
     // des types primitifs (bool/String/int), jamais d'objets Hive
@@ -64,6 +68,7 @@ class HiveService {
       Hive.openBox<Dette>(HiveBoxes.dettes),
       Hive.openBox<Devise>(HiveBoxes.devises),
       Hive.openBox<PaiementDette>(HiveBoxes.paiementsDette),
+      Hive.openBox<Depense>(HiveBoxes.depenses),
     ]);
 
     _initialise = true;
@@ -86,6 +91,9 @@ class HiveService {
 
   static Box<PaiementDette> get paiementsDetteBox =>
       Hive.box<PaiementDette>(HiveBoxes.paiementsDette);
+
+  static Box<Depense> get depensesBox =>
+      Hive.box<Depense>(HiveBoxes.depenses);
 
   static Box get parametresBox => Hive.box(HiveBoxes.parametres);
 }
