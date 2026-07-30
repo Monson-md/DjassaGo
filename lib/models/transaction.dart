@@ -3,6 +3,7 @@ import 'package:hive/hive.dart';
 import '../utils/devises_disponibles.dart';
 import '../utils/money.dart';
 import 'item_vendu.dart';
+import 'mode_paiement.dart';
 
 part 'transaction.g.dart';
 
@@ -41,6 +42,12 @@ class Transaction extends HiveObject {
   @HiveField(8, defaultValue: 0)
   int beneficeNetMineur;
 
+  /// Moyen de règlement de la vente. Valeur par défaut `especes` pour les
+  /// transactions enregistrées avant l'introduction de ce champ — elles
+  /// n'existaient qu'au comptant, aucune vente à crédit n'était possible.
+  @HiveField(9, defaultValue: ModePaiement.especes)
+  ModePaiement modePaiement;
+
   Transaction({
     required this.id,
     required this.date,
@@ -51,6 +58,7 @@ class Transaction extends HiveObject {
     this.synchronise = false,
     int? montantTotalMineur,
     int? beneficeNetMineur,
+    this.modePaiement = ModePaiement.especes,
   })  : montantTotalMineur = montantTotalMineur ??
             versUnitesMineures(montantTotal, decimalesPourCodeIso(devise)),
         beneficeNetMineur = beneficeNetMineur ??
@@ -88,6 +96,7 @@ class Transaction extends HiveObject {
         'synchronise': synchronise,
         'montantTotalMineur': montantTotalMineur,
         'beneficeNetMineur': beneficeNetMineur,
+        'modePaiement': modePaiement.name,
       };
 
   factory Transaction.depuisJson(Map<String, dynamic> json) => Transaction(
@@ -102,5 +111,8 @@ class Transaction extends HiveObject {
         synchronise: json['synchronise'] as bool? ?? false,
         montantTotalMineur: json['montantTotalMineur'] as int?,
         beneficeNetMineur: json['beneficeNetMineur'] as int?,
+        modePaiement: json['modePaiement'] == null
+            ? ModePaiement.especes
+            : ModePaiement.values.byName(json['modePaiement'] as String),
       );
 }

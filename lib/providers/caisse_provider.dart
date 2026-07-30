@@ -31,6 +31,8 @@ class CaisseProvider extends ChangeNotifier {
 
   int beneficeNetDuJourMineur() => _service.beneficeNetDuJourMineur();
 
+  int encaissementsDuJourMineur() => _service.encaissementsDuJourMineur();
+
   List<model.Transaction> transactionsDuJour() => _service.transactionsDuJour();
 
   void ajouterAuPanier(Produit produit, {int quantite = 1}) {
@@ -75,6 +77,22 @@ class CaisseProvider extends ChangeNotifier {
     final transaction = await _service.finaliserVente(
       panier: List.of(_panier),
       devise: devise,
+    );
+    _panier.clear();
+    notifyListeners();
+    return transaction;
+  }
+
+  Future<model.Transaction> finaliserVenteACredit({
+    required String devise,
+    required String nomClient,
+    required String telephone,
+  }) async {
+    final transaction = await _service.finaliserVenteACredit(
+      panier: List.of(_panier),
+      devise: devise,
+      nomClient: nomClient,
+      telephone: telephone,
     );
     _panier.clear();
     notifyListeners();

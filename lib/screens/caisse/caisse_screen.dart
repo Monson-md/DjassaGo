@@ -138,32 +138,50 @@ class _StatsDuJour extends StatelessWidget {
     final caisse = context.watch<CaisseProvider>();
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _CarteStat(
-              titre: "Ventes aujourd'hui",
-              valeur: formaterMontantMineur(
-                caisse.totalDuJourMineur(),
-                decimales: devise.decimales,
-                symbole: devise.symbole,
+          Row(
+            children: [
+              Expanded(
+                child: _CarteStat(
+                  titre: 'CA du jour',
+                  valeur: formaterMontantMineur(
+                    caisse.totalDuJourMineur(),
+                    decimales: devise.decimales,
+                    symbole: devise.symbole,
+                  ),
+                  couleur: Colors.teal,
+                  icone: Icons.point_of_sale,
+                ),
               ),
-              couleur: Colors.teal,
-              icone: Icons.point_of_sale,
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _CarteStat(
+                  titre: 'Bénéfice net',
+                  valeur: formaterMontantMineur(
+                    caisse.beneficeNetDuJourMineur(),
+                    decimales: devise.decimales,
+                    symbole: devise.symbole,
+                  ),
+                  couleur: Colors.indigo,
+                  icone: Icons.trending_up,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _CarteStat(
-              titre: 'Bénéfice net',
-              valeur: formaterMontantMineur(
-                caisse.beneficeNetDuJourMineur(),
-                decimales: devise.decimales,
-                symbole: devise.symbole,
-              ),
-              couleur: Colors.indigo,
-              icone: Icons.trending_up,
+          const SizedBox(height: 10),
+          // Distinct du CA : une vente à crédit compte dans le CA du jour
+          // mais pas ici tant qu'elle n'est pas payée (voir
+          // CaisseService.encaissementsDuJourMineur).
+          _CarteStat(
+            titre: 'Encaissements du jour',
+            valeur: formaterMontantMineur(
+              caisse.encaissementsDuJourMineur(),
+              decimales: devise.decimales,
+              symbole: devise.symbole,
             ),
+            couleur: Colors.blue,
+            icone: Icons.savings,
           ),
         ],
       ),

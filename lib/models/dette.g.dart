@@ -29,13 +29,14 @@ class DetteAdapter extends TypeAdapter<Dette> {
       synchronise: fields[9] as bool,
       montantDuMineur: fields[10] == null ? 0 : fields[10] as int?,
       montantInitialMineur: fields[11] == null ? 0 : fields[11] as int?,
+      transactionId: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Dette obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class DetteAdapter extends TypeAdapter<Dette> {
       ..writeByte(10)
       ..write(obj.montantDuMineur)
       ..writeByte(11)
-      ..write(obj.montantInitialMineur);
+      ..write(obj.montantInitialMineur)
+      ..writeByte(12)
+      ..write(obj.transactionId);
   }
 
   @override

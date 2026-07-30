@@ -22,8 +22,9 @@ Lis ces fichiers avant de commencer quoi que ce soit.
 - **Phase 0** — terminée. Le projet compile.
 - **Phase 1** — terminée. Prix d'achat figés dans `ItemVendu`, montants en unités mineures, décimales par devise.
 - **Crash au démarrage** — résolu. La cause était `firebase_core` et `google_mobile_ads`, qui s'initialisent côté natif avant Dart et faisaient tomber le processus faute de configuration. **Les deux ont été retirés**, ainsi que `cloud_firestore` et `connectivity_plus`. `SyncService` et `AdService` sont des implémentations neutres qui ne font rien. Les trois APK démarrent correctement sur un appareil réel.
-- **Phase 2** — incomplète. L'export de sauvegarde fonctionne via `share_plus`. L'import est désactivé : `file_picker` ne compile pas avec la migration Built-in Kotlin de Flutter.
-- **Phases 3 à 10** — à faire.
+- **Phase 2** — terminée. Export et import de sauvegarde fonctionnent (via `file_selector`, `file_picker` ayant été abandonné), testés en debug et en release sur appareil réel.
+- **Phase 3** — terminée (code). Panier : deux actions, « Encaisser » et « Mettre en dette » (sélection d'un client existant ou saisie rapide). `Transaction.modePaiement` (especes/credit/mobileMoney) et `Dette.transactionId` relient les deux. Nouveau modèle `PaiementDette` (typeId 7) pour l'historique des paiements partiels. Tableau de bord de l'écran Caisse : CA du jour, bénéfice net et encaissements du jour affichés séparément — un paiement de dette n'est jamais recompté comme une vente. `flutter analyze` (0 erreur) et `flutter test` (4 tests) passent. **Pas encore testée sur téléphone.**
+- **Phases 4 à 10** — à faire.
 - **Design** — non commencé. Les polices `.ttf` sont sur le disque mais non suivies par Git, et la section `fonts:` a été retirée de `pubspec.yaml`.
 
 ---

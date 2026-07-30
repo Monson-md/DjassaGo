@@ -56,6 +56,12 @@ class Dette extends HiveObject {
   @HiveField(11, defaultValue: 0)
   int montantInitialMineur;
 
+  /// Id de la [Transaction] à l'origine de cette dette, si elle provient
+  /// d'une vente à crédit (bouton « Mettre en dette » du panier). `null`
+  /// pour une dette saisie manuellement depuis le carnet.
+  @HiveField(12)
+  String? transactionId;
+
   Dette({
     required this.id,
     required this.nomClient,
@@ -69,6 +75,7 @@ class Dette extends HiveObject {
     this.synchronise = false,
     int? montantDuMineur,
     int? montantInitialMineur,
+    this.transactionId,
   })  : montantInitial = montantInitial ?? montantDu,
         montantDuMineur = montantDuMineur ??
             versUnitesMineures(montantDu, decimalesPourCodeIso(devise)),
@@ -114,6 +121,7 @@ class Dette extends HiveObject {
         'synchronise': synchronise,
         'montantDuMineur': montantDuMineur,
         'montantInitialMineur': montantInitialMineur,
+        'transactionId': transactionId,
       };
 
   factory Dette.depuisJson(Map<String, dynamic> json) => Dette(
@@ -129,5 +137,6 @@ class Dette extends HiveObject {
         synchronise: json['synchronise'] as bool? ?? false,
         montantDuMineur: json['montantDuMineur'] as int?,
         montantInitialMineur: json['montantInitialMineur'] as int?,
+        transactionId: json['transactionId'] as String?,
       );
 }

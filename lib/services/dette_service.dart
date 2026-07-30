@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/dette.dart';
+import '../models/paiement_dette.dart';
 import '../utils/devises_disponibles.dart';
 import '../utils/money.dart';
 import 'hive_service.dart';
@@ -34,6 +35,7 @@ class DetteService {
     required String devise,
     DateTime? dateDette,
     String? note,
+    String? transactionId,
   }) async {
     final dette = Dette(
       id: _uuid.v4(),
@@ -43,11 +45,17 @@ class DetteService {
       dateDette: dateDette ?? DateTime.now(),
       devise: devise,
       note: note,
+      transactionId: transactionId,
     );
     await HiveService.dettesBox.put(dette.id, dette);
     return dette;
   }
 
+  /// Enregistre un paiement (total ou partiel) contre une dette. Contrairement
+  /// au chiffre d'affaires (reconnu au moment de la vente à crédit), ceci est
+  /// un encaissement pur : il ne doit jamais être recompté comme une vente.
+  /// Un [PaiementDette] immuable est conservé pour l'historique et pour le
+  /// calcul des encaissements du jour (voir CaisseService.encaissementsDuJourMineur).
   Future<void> enregistrerPaiement(Dette dette, double montantPaye) async {
     final nouveauMontant = dette.montantDu - montantPaye;
     dette.definirMontantDu(nouveauMontant <= 0 ? 0 : nouveauMontant);
@@ -55,6 +63,22 @@ class DetteService {
         ? StatutDette.payee
         : StatutDette.partiellementPayee;
     await dette.save();
+
+    final paiement = PaiementDette(
+      id: _uuid.v4(),
+      detteId: dette.id,
+      montant: montantPaye,
+      date: DateTime.now(),
+      devise: dette.devise,
+    );
+    await HiveService.paiementsDetteBox.put(paiement.id, paiement);
+  }
+
+  List<PaiementDette> paiementsPour(String detteId) {
+    return HiveService.paiementsDetteBox.values
+        .where((p) => p.detteId == detteId)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
   }
 
   int totalDettesEnCoursMineur() {

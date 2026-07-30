@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/dette.dart';
+import '../models/paiement_dette.dart';
 import '../models/produit.dart';
 import '../models/transaction.dart' as model;
 import 'hive_service.dart';
@@ -48,6 +49,9 @@ class BackupService {
           .toList(),
       'dettes':
           HiveService.dettesBox.values.map((d) => d.versJson()).toList(),
+      'paiementsDette': HiveService.paiementsDetteBox.values
+          .map((p) => p.versJson())
+          .toList(),
     };
 
     final dossier = await getApplicationDocumentsDirectory();
@@ -129,6 +133,7 @@ class BackupService {
       await HiveService.produitsBox.clear();
       await HiveService.transactionsBox.clear();
       await HiveService.dettesBox.clear();
+      await HiveService.paiementsDetteBox.clear();
     }
 
     for (final p in json['produits'] as List) {
@@ -143,6 +148,12 @@ class BackupService {
     for (final d in json['dettes'] as List) {
       final dette = Dette.depuisJson(d as Map<String, dynamic>);
       await HiveService.dettesBox.put(dette.id, dette);
+    }
+    // Absent des sauvegardes antérieures à la Phase 3 : traité comme une
+    // liste vide plutôt que de rejeter le fichier (voir _lireEtValider).
+    for (final p in (json['paiementsDette'] as List? ?? const [])) {
+      final paiement = PaiementDette.depuisJson(p as Map<String, dynamic>);
+      await HiveService.paiementsDetteBox.put(paiement.id, paiement);
     }
   }
 }

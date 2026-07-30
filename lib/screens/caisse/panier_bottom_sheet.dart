@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/mode_paiement.dart';
 import '../../models/transaction.dart' as model;
 import '../../providers/caisse_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/produit_provider.dart';
 import '../../utils/money.dart';
+import '../../widgets/boutons_caisse.dart';
+import 'mettre_en_dette_sheet.dart';
 
 /// Contenu du panier avant validation de la vente.
 /// Renvoie `true` via Navigator.pop si une vente a été finalisée.
@@ -39,17 +42,37 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
     }
   }
 
+  Future<void> _mettreEnDette() async {
+    final transaction = await showModalBottomSheet<model.Transaction>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => const MettreEnDetteSheet(),
+    );
+    if (transaction == null || !mounted) return;
+    context.read<ProduitProvider>().charger();
+    Navigator.of(context).pop(true);
+    _afficherRecu(transaction);
+  }
+
   void _afficherRecu(model.Transaction transaction) {
     final devise = context.read<CurrencyProvider>().devise;
+    final estCredit = transaction.modePaiement == ModePaiement.credit;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: Colors.green, size: 40),
-        title: const Text('Vente enregistrée'),
+        icon: Icon(
+          estCredit ? Icons.schedule : Icons.check_circle,
+          color: estCredit ? Colors.orange : Colors.green,
+          size: 40,
+        ),
+        title: Text(estCredit ? 'Vente mise en dette' : 'Vente enregistrée'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Total encaissé : ${formaterMontantMineur(
+            Text('${estCredit ? 'Montant dû' : 'Total encaissé'} : ${formaterMontantMineur(
               transaction.montantTotalMineur,
               decimales: devise.decimales,
               symbole: devise.symbole,
@@ -168,24 +191,39 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: panier.isEmpty || _validationEnCours
-                              ? null
-                              : _validerVente,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: BoutonFantome(
+                              texte: 'Mettre en dette',
+                              icone: Icons.schedule,
+                              onPressed: panier.isEmpty || _validationEnCours
+                                  ? null
+                                  : _mettreEnDette,
+                            ),
                           ),
-                          child: _validationEnCours
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Text('Valider la vente'),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _validationEnCours
+                                ? const SizedBox(
+                                    height: 48,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      ),
+                                    ),
+                                  )
+                                : BoutonPrincipal(
+                                    texte: 'Encaisser',
+                                    icone: Icons.check_circle,
+                                    onPressed:
+                                        panier.isEmpty ? null : _validerVente,
+                                  ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
