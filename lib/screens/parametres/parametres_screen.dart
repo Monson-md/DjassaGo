@@ -6,11 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/currency_provider.dart';
+import '../../providers/pin_provider.dart';
 import '../../services/backup_service.dart';
 import '../../services/diagnostic_service.dart';
 import '../../services/sync_service.dart';
 import '../../utils/formatage.dart';
 import '../../widgets/banniere_pub.dart';
+import '../verrouillage/creation_pin_screen.dart';
+import '../verrouillage/gerer_pin_sheet.dart';
 
 /// Écran de paramètres : informations sur le commerce, synchronisation
 /// manuelle, et emplacement de la publicité (jamais sur l'écran de Caisse).
@@ -145,9 +148,27 @@ class _ParametresScreenState extends State<ParametresScreen> {
     }
   }
 
+  void _gererPin(bool pinConfigure) {
+    if (pinConfigure) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => const GererPinSheet(),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const CreationPinScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<CurrencyProvider>();
+    final pin = context.watch<PinProvider>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Paramètres')),
@@ -203,6 +224,22 @@ class _ParametresScreenState extends State<ParametresScreen> {
                   onTap: _importEnCours ? null : _importer,
                 ),
               ],
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: Icon(
+                pin.pinConfigure ? Icons.lock : Icons.lock_open,
+                color: pin.pinConfigure ? Colors.teal : null,
+              ),
+              title: const Text('Verrouillage par code PIN'),
+              subtitle: Text(
+                pin.pinConfigure
+                    ? 'Activé — verrouille l\'app au lancement et en arrière-plan.'
+                    : 'Désactivé. Le téléphone passe entre plusieurs mains, pensez à l\'activer.',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _gererPin(pin.pinConfigure),
             ),
           ),
           Card(

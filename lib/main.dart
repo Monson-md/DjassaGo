@@ -8,9 +8,11 @@ import 'package:provider/provider.dart';
 import 'providers/caisse_provider.dart';
 import 'providers/currency_provider.dart';
 import 'providers/dette_provider.dart';
+import 'providers/pin_provider.dart';
 import 'providers/produit_provider.dart';
 import 'screens/accueil/accueil_screen.dart';
 import 'screens/accueil/onboarding_pays_screen.dart';
+import 'screens/verrouillage/pin_lock_screen.dart';
 import 'services/ad_service.dart';
 import 'services/diagnostic_service.dart';
 import 'services/hive_service.dart';
@@ -239,6 +241,7 @@ class CaisseDePocheApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProduitProvider()),
         ChangeNotifierProvider(create: (_) => CaisseProvider()),
         ChangeNotifierProvider(create: (_) => DetteProvider()),
+        ChangeNotifierProvider(create: (_) => PinProvider()),
       ],
       child: MaterialApp(
         title: 'Caisse de Poche',
@@ -257,16 +260,53 @@ class CaisseDePocheApp extends StatelessWidget {
 }
 
 /// Redirige vers l'onboarding pays/devise si c'est le premier lancement,
-/// sinon directement vers l'écran d'accueil.
-class _EcranDemarrage extends StatelessWidget {
+/// sinon vers l'écran de verrouillage (si un code PIN est configuré) puis
+/// l'écran d'accueil. Reverrouille l'application dès qu'elle repasse en
+/// arrière-plan — le téléphone passe entre les mains des vendeurs et des
+/// clients (voir Phase 5 de docs/PHASES.md).
+class _EcranDemarrage extends StatefulWidget {
   const _EcranDemarrage();
+
+  @override
+  State<_EcranDemarrage> createState() => _EcranDemarrageState();
+}
+
+class _EcranDemarrageState extends State<_EcranDemarrage>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      context.read<PinProvider>().verrouiller();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final premierLancementTermine =
         context.watch<CurrencyProvider>().premierLancementTermine;
-    return premierLancementTermine
-        ? const AccueilScreen()
-        : const OnboardingPaysScreen();
+    if (!premierLancementTermine) {
+      return const OnboardingPaysScreen();
+    }
+
+    final pin = context.watch<PinProvider>();
+    if (!pin.pret) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (pin.verrouille) {
+      return const PinLockScreen();
+    }
+    return const AccueilScreen();
   }
 }
