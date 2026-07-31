@@ -59,6 +59,17 @@ class Produit extends HiveObject {
   @HiveField(12)
   DateTime? lastModified;
 
+  /// Nom de la plus petite unité vendable du produit (« bouteille »,
+  /// « sachet », « pièce », « kg »...) : [stockActuel] et [prixAchat]
+  /// (coût d'une unité de base, pas d'un conditionnement) s'expriment
+  /// toujours dans cette unité. Les façons de vendre le produit — à
+  /// l'unité, au casier, au carton — sont des [Conditionnement] séparés,
+  /// chacun un multiple de cette unité de base (voir
+  /// lib/models/conditionnement.dart). Valeur par défaut « unité » pour les
+  /// produits créés avant l'introduction des conditionnements.
+  @HiveField(13, defaultValue: 'unité')
+  String uniteBase;
+
   Produit({
     required this.id,
     required this.nom,
@@ -73,6 +84,7 @@ class Produit extends HiveObject {
     int? prixVenteMineur,
     this.deviceId = '',
     this.lastModified,
+    this.uniteBase = 'unité',
   })  : dateCreation = dateCreation ?? DateTime.now(),
         prixAchatMineur = prixAchatMineur ??
             versUnitesMineures(prixAchat, decimalesPourCodeIso(devise)),
@@ -127,6 +139,7 @@ class Produit extends HiveObject {
         'prixVenteMineur': prixVenteMineur,
         'deviceId': deviceId,
         'lastModified': lastModified?.toIso8601String(),
+        'uniteBase': uniteBase,
       };
 
   factory Produit.depuisJson(Map<String, dynamic> json) => Produit(
@@ -147,5 +160,6 @@ class Produit extends HiveObject {
         lastModified: json['lastModified'] == null
             ? null
             : DateTime.parse(json['lastModified'] as String),
+        uniteBase: json['uniteBase'] as String? ?? 'unité',
       );
 }

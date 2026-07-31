@@ -140,17 +140,22 @@ class _PanierBottomSheetState extends State<PanierBottomSheet> {
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final item = panier[index];
+                      final prixUnitaire = formaterMontantMineur(
+                        versUnitesMineures(
+                            item.prixUnitaireVente, devise.decimales),
+                        decimales: devise.decimales,
+                        symbole: devise.symbole,
+                      );
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(item.nomProduit),
-                        subtitle: Text(
-                          formaterMontantMineur(
-                            versUnitesMineures(
-                                item.prixUnitaireVente, devise.decimales),
-                            decimales: devise.decimales,
-                            symbole: devise.symbole,
-                          ),
-                        ),
+                        // « 2 × Casier Coca » : le format vendu (figé au
+                        // moment de l'ajout, voir CaisseProvider.ajouterAuPanier)
+                        // doit rester visible même si le produit a plusieurs
+                        // conditionnements.
+                        title: Text(item.conditionnementNom.isEmpty
+                            ? item.nomProduit
+                            : '${item.conditionnementNom} ${item.nomProduit}'),
+                        subtitle: Text(prixUnitaire),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

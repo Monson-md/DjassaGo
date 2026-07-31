@@ -35,6 +35,7 @@ class ProduitService {
     required double prixVente,
     required int stockActuel,
     required String devise,
+    String uniteBase = 'unité',
   }) async {
     final produit = Produit(
       id: _uuid.v4(),
@@ -45,6 +46,7 @@ class ProduitService {
       devise: devise,
       deviceId: DeviceIdService.obtenir(),
       lastModified: DateTime.now(),
+      uniteBase: uniteBase,
     );
     await HiveService.produitsBox.put(produit.id, produit);
     return produit;

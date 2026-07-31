@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../models/conditionnement.dart';
 import '../models/depense.dart';
 import '../models/dette.dart';
 import '../models/paiement_dette.dart';
 import '../models/produit.dart';
 import '../models/transaction.dart' as model;
+import 'conditionnement_service.dart';
 import 'hive_service.dart';
 
 /// Aperçu du contenu d'un fichier de sauvegarde, affiché avant
@@ -33,8 +35,13 @@ class ApercuSauvegarde {
 /// en cas de perte du téléphone : sans ça, tout l'historique du
 /// commerçant disparaît avec l'appareil.
 class BackupService {
-  static const int formatVersion = 1;
+  // Version 2 : ajout des conditionnements de vente (voir
+  // lib/models/conditionnement.dart). Une sauvegarde v1 reste importable :
+  // chaque produit sans conditionnement dans le fichier en reçoit
+  // automatiquement un, unique, de quantité 1 (voir _migrerConditionnementsAbsents).
+  static const int formatVersion = 2;
   static const String _cleDerniereSauvegarde = 'derniere_sauvegarde_le';
+  final ConditionnementService _conditionnementService = ConditionnementService();
 
   /// Écrit un fichier JSON contenant toutes les boxes Hive et retourne
   /// son chemin. N'inclut jamais les paramètres de pays/devise : ce
@@ -55,6 +62,9 @@ class BackupService {
           .toList(),
       'depenses':
           HiveService.depensesBox.values.map((d) => d.versJson()).toList(),
+      'conditionnements': HiveService.conditionnementsBox.values
+          .map((c) => c.versJson())
+          .toList(),
     };
 
     final dossier = await getApplicationDocumentsDirectory();
@@ -138,11 +148,14 @@ class BackupService {
       await HiveService.dettesBox.clear();
       await HiveService.paiementsDetteBox.clear();
       await HiveService.depensesBox.clear();
+      await HiveService.conditionnementsBox.clear();
     }
 
+    final produitsImportes = <Produit>[];
     for (final p in json['produits'] as List) {
       final produit = Produit.depuisJson(p as Map<String, dynamic>);
       await HiveService.produitsBox.put(produit.id, produit);
+      produitsImportes.add(produit);
     }
     for (final t in json['transactions'] as List) {
       final transaction =
@@ -163,6 +176,24 @@ class BackupService {
     for (final d in (json['depenses'] as List? ?? const [])) {
       final depense = Depense.depuisJson(d as Map<String, dynamic>);
       await HiveService.depensesBox.put(depense.id, depense);
+    }
+    // Absent des sauvegardes antérieures au format v2 (voir [formatVersion]).
+    final produitsAvecConditionnement = <String>{};
+    for (final c in (json['conditionnements'] as List? ?? const [])) {
+      final conditionnement =
+          Conditionnement.depuisJson(c as Map<String, dynamic>);
+      await HiveService.conditionnementsBox
+          .put(conditionnement.id, conditionnement);
+      produitsAvecConditionnement.add(conditionnement.produitId);
+    }
+    // Une sauvegarde antérieure au format v2, ou un produit qui n'avait
+    // lui-même aucun conditionnement au moment de l'export, reçoit ici un
+    // conditionnement unique de quantité 1 au prix de vente importé — voir
+    // ConditionnementService.migrerSiAbsent.
+    for (final produit in produitsImportes) {
+      if (!produitsAvecConditionnement.contains(produit.id)) {
+        await _conditionnementService.migrerSiAbsent(produit);
+      }
     }
   }
 }

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/conditionnement.dart';
 import '../../models/produit.dart';
 import '../../providers/caisse_provider.dart';
+import '../../providers/conditionnement_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/produit_provider.dart';
 import '../../services/ad_service.dart';
 import '../../utils/devises_disponibles.dart';
 import '../../utils/money.dart';
+import 'choix_conditionnement_sheet.dart';
 import 'journal_ventes_screen.dart';
 import 'panier_bottom_sheet.dart';
 
@@ -259,36 +262,77 @@ class _CarteProduit extends StatelessWidget {
 
   const _CarteProduit({required this.produit, required this.devise});
 
+  Future<void> _choisirFormat(
+      BuildContext context, List<Conditionnement> conditionnements) async {
+    final choisi = await showModalBottomSheet<Conditionnement>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => ChoixConditionnementSheet(
+        produit: produit,
+        conditionnements: conditionnements,
+      ),
+    );
+    if (choisi != null && context.mounted) {
+      context.read<CaisseProvider>().ajouterAuPanier(produit, choisi);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final enRupture = produit.enRupture;
+    final conditionnements =
+        context.watch<ConditionnementProvider>().listerPour(produit);
+    final conditionnementParDefaut = conditionnements
+        .firstWhere((c) => c.parDefaut, orElse: () => conditionnements.first);
+    final plusieursFormats = conditionnements.length > 1;
+
     return Card(
       elevation: 0,
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
+        // Une touche ajoute directement le format par défaut — comportement
+        // inchangé pour un produit à conditionnement unique. Un appui long
+        // ouvre le choix des autres formats pour un produit qui en a
+        // plusieurs (ex: Bouteille ou Casier de Coca).
         onTap: enRupture
             ? null
-            : () => context.read<CaisseProvider>().ajouterAuPanier(produit),
+            : () => context
+                .read<CaisseProvider>()
+                .ajouterAuPanier(produit, conditionnementParDefaut),
+        onLongPress: enRupture || !plusieursFormats
+            ? null
+            : () => _choisirFormat(context, conditionnements),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                produit.nom,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      produit.nom,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (plusieursFormats)
+                    Icon(Icons.layers,
+                        size: 14, color: Colors.grey.shade500),
+                ],
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     formaterMontantMineur(
-                      produit.prixVenteMineur,
+                      conditionnementParDefaut.prixVenteMineur,
                       decimales: devise.decimales,
                       symbole: devise.symbole,
                     ),

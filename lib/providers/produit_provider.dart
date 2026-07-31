@@ -24,21 +24,24 @@ class ProduitProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> ajouter({
+  Future<Produit> ajouter({
     required String nom,
     required double prixAchat,
     required double prixVente,
     required int stockActuel,
     required String devise,
+    String uniteBase = 'unité',
   }) async {
-    await _service.ajouter(
+    final produit = await _service.ajouter(
       nom: nom,
       prixAchat: prixAchat,
       prixVente: prixVente,
       stockActuel: stockActuel,
       devise: devise,
+      uniteBase: uniteBase,
     );
     charger();
+    return produit;
   }
 
   Future<void> modifier(Produit produit) async {

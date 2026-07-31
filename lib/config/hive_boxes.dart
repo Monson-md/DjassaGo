@@ -10,6 +10,10 @@ class HiveBoxes {
   static const String paiementsDette = 'paiements_dette_box';
   static const String depenses = 'depenses_box';
 
+  /// Conditionnements de vente des produits (Bouteille, Casier, Carton...)
+  /// — voir lib/models/conditionnement.dart.
+  static const String conditionnements = 'conditionnements_box';
+
   /// Journal des conflits de synchronisation (Phase 9, préparation
   /// uniquement — voir lib/services/sync_service.dart). Vide tant qu'aucune
   /// synchronisation réelle n'est activée.

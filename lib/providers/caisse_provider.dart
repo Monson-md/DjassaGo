@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/conditionnement.dart';
 import '../models/item_vendu.dart';
 import '../models/produit.dart';
 import '../models/transaction.dart' as model;
@@ -44,9 +45,21 @@ class CaisseProvider extends ChangeNotifier {
   List<model.Transaction> toutesLesTransactions() =>
       _service.toutesLesTransactions();
 
-  void ajouterAuPanier(Produit produit, {int quantite = 1}) {
-    final indexExistant =
-        _panier.indexWhere((i) => i.produitId == produit.id);
+  /// Ajoute [quantite] exemplaires de [conditionnement] au panier. Le prix
+  /// de vente et le coût figés dans l'ItemVendu sont ceux du conditionnement
+  /// choisi (ex: 2000 pour un casier, 150 pour une bouteille) — jamais ceux
+  /// du [Produit] courant, qui ne représentent que le prix/coût d'une seule
+  /// unité de base. Deux lignes du même produit mais de conditionnements
+  /// différents (ex: 2 casiers puis 3 bouteilles du même Coca) restent
+  /// distinctes dans le panier.
+  void ajouterAuPanier(
+    Produit produit,
+    Conditionnement conditionnement, {
+    int quantite = 1,
+  }) {
+    final indexExistant = _panier.indexWhere((i) =>
+        i.produitId == produit.id &&
+        i.conditionnementNom == conditionnement.nom);
     if (indexExistant != -1) {
       _panier[indexExistant].quantite += quantite;
     } else {
@@ -54,8 +67,10 @@ class CaisseProvider extends ChangeNotifier {
         produitId: produit.id,
         nomProduit: produit.nom,
         quantite: quantite,
-        prixUnitaireVente: produit.prixVente,
-        prixUnitaireAchat: produit.prixAchat,
+        prixUnitaireVente: conditionnement.prixVente,
+        prixUnitaireAchat: produit.prixAchat * conditionnement.quantiteEnUniteBase,
+        conditionnementNom: conditionnement.nom,
+        quantiteEnUniteBase: conditionnement.quantiteEnUniteBase,
       ));
     }
     notifyListeners();

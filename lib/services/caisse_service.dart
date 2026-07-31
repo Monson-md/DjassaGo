@@ -42,8 +42,14 @@ class CaisseService {
       throw Exception('Le panier est vide');
     }
 
+    // Le stock est toujours compté en unité de base : un item du panier
+    // représente [quantite] exemplaires d'un conditionnement qui vaut
+    // [quantiteEnUniteBase] unités de base chacun (1 pour un produit
+    // simple, 20 pour un casier de 20 bouteilles...) — voir
+    // lib/models/conditionnement.dart et CaisseProvider.ajouterAuPanier.
     for (final item in panier) {
-      await _produitService.decrementerStock(item.produitId, item.quantite);
+      await _produitService.decrementerStock(
+          item.produitId, item.quantite * item.quantiteEnUniteBase);
     }
 
     // Fige les prix unitaires en unités mineures au moment de la vente
@@ -147,7 +153,8 @@ class CaisseService {
     }
 
     for (final item in transaction.itemsVendus) {
-      await _produitService.reapprovisionner(item.produitId, item.quantite);
+      await _produitService.reapprovisionner(
+          item.produitId, item.quantite * item.quantiteEnUniteBase);
     }
 
     transaction.marquerAnnulee(motif: motif);

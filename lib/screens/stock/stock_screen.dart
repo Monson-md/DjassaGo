@@ -1,11 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/conditionnement.dart';
 import '../../models/produit.dart';
+import '../../providers/conditionnement_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/produit_provider.dart';
 import '../../utils/money.dart';
 import 'produit_form_sheet.dart';
+
+/// Stock d'un produit exprimé en unité de base, avec la conversion la plus
+/// lisible pour le commerçant quand un conditionnement groupé existe
+/// (« 47 bouteilles (2 casiers + 7) ») — voir docs du modèle Conditionnement.
+String _texteStock(Produit produit, List<Conditionnement> conditionnements) {
+  final pluriel = produit.stockActuel > 1 ? 's' : '';
+  final base = '${produit.stockActuel} ${produit.uniteBase}$pluriel';
+
+  final regroupements = conditionnements.where((c) => c.quantiteEnUniteBase > 1).toList()
+    ..sort((a, b) => b.quantiteEnUniteBase.compareTo(a.quantiteEnUniteBase));
+  if (regroupements.isEmpty) return base;
+
+  final plusGrand = regroupements.first;
+  final nGroupes = produit.stockActuel ~/ plusGrand.quantiteEnUniteBase;
+  final reste = produit.stockActuel % plusGrand.quantiteEnUniteBase;
+  if (nGroupes == 0) return base;
+
+  final nomGroupe = plusGrand.nom.toLowerCase();
+  final detail = reste > 0
+      ? '$nGroupes $nomGroupe${nGroupes > 1 ? 's' : ''} + $reste'
+      : '$nGroupes $nomGroupe${nGroupes > 1 ? 's' : ''}';
+  return '$base ($detail)';
+}
 
 /// Gestion du stock : liste des produits, ajout, modification et
 /// réapprovisionnement.
@@ -51,6 +76,7 @@ class StockScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final produits = context.watch<ProduitProvider>().produits;
     final devise = context.watch<CurrencyProvider>().devise;
+    final conditionnementProvider = context.watch<ConditionnementProvider>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Stock')),
@@ -68,12 +94,16 @@ class StockScreen extends StatelessWidget {
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final produit = produits[index];
+                final conditionnements =
+                    conditionnementProvider.listerPour(produit);
+                final conditionnementParDefaut = conditionnements
+                    .firstWhere((c) => c.parDefaut, orElse: () => conditionnements.first);
                 return ListTile(
                   onTap: () => _ouvrirFormulaire(context, produit: produit),
                   title: Text(produit.nom),
                   subtitle: Text(
-                    'Achat: ${formaterMontantMineur(produit.prixAchatMineur, decimales: devise.decimales, symbole: devise.symbole)} · '
-                    'Vente: ${formaterMontantMineur(produit.prixVenteMineur, decimales: devise.decimales, symbole: devise.symbole)}',
+                    'Achat: ${formaterMontantMineur(produit.prixAchatMineur, decimales: devise.decimales, symbole: devise.symbole)}/${produit.uniteBase} · '
+                    'Vente ${conditionnementParDefaut.nom}: ${formaterMontantMineur(conditionnementParDefaut.prixVenteMineur, decimales: devise.decimales, symbole: devise.symbole)}',
                   ),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -91,7 +121,7 @@ class StockScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '${produit.stockActuel} en stock',
+                          _texteStock(produit, conditionnements),
                           style: TextStyle(
                             fontSize: 12,
                             color: produit.enRupture

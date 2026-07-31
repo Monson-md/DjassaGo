@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/caisse_provider.dart';
+import 'providers/conditionnement_provider.dart';
 import 'providers/currency_provider.dart';
 import 'providers/depense_provider.dart';
 import 'providers/dette_provider.dart';
@@ -240,6 +241,7 @@ class CaisseDePocheApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => CurrencyProvider()),
         ChangeNotifierProvider(create: (_) => ProduitProvider()),
+        ChangeNotifierProvider(create: (_) => ConditionnementProvider()),
         ChangeNotifierProvider(create: (_) => CaisseProvider()),
         ChangeNotifierProvider(create: (_) => DetteProvider()),
         ChangeNotifierProvider(create: (_) => PinProvider()),

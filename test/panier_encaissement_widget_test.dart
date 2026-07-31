@@ -12,6 +12,7 @@ import 'dart:io';
 
 import 'package:caisse_de_poche/models/produit.dart';
 import 'package:caisse_de_poche/providers/caisse_provider.dart';
+import 'package:caisse_de_poche/providers/conditionnement_provider.dart';
 import 'package:caisse_de_poche/providers/currency_provider.dart';
 import 'package:caisse_de_poche/providers/produit_provider.dart';
 import 'package:caisse_de_poche/screens/caisse/caisse_screen.dart';
@@ -66,6 +67,7 @@ void main() {
         providers: [
           ChangeNotifierProvider(create: (_) => CurrencyProvider()),
           ChangeNotifierProvider(create: (_) => ProduitProvider()),
+          ChangeNotifierProvider(create: (_) => ConditionnementProvider()),
           ChangeNotifierProvider(create: (_) => CaisseProvider()),
         ],
         child: const MaterialApp(home: CaisseScreen()),

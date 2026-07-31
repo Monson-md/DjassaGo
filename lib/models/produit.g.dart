@@ -30,13 +30,14 @@ class ProduitAdapter extends TypeAdapter<Produit> {
       prixVenteMineur: fields[10] == null ? 0 : fields[10] as int?,
       deviceId: fields[11] == null ? '' : fields[11] as String,
       lastModified: fields[12] as DateTime?,
+      uniteBase: fields[13] == null ? 'unité' : fields[13] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Produit obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class ProduitAdapter extends TypeAdapter<Produit> {
       ..writeByte(11)
       ..write(obj.deviceId)
       ..writeByte(12)
-      ..write(obj.lastModified);
+      ..write(obj.lastModified)
+      ..writeByte(13)
+      ..write(obj.uniteBase);
   }
 
   @override
