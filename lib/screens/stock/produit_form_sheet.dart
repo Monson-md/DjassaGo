@@ -239,6 +239,9 @@ class _ProduitFormSheetState extends State<ProduitFormSheet> {
     final devise = context.watch<CurrencyProvider>().devise;
     final uniteBaseAffichee =
         _uniteBaseController.text.trim().isEmpty ? 'unité' : _uniteBaseController.text.trim();
+    final quantiteAchat = int.tryParse(_achatQuantiteController.text) ?? 1;
+    final uniteAchatAffichee =
+        quantiteAchat > 1 ? '${uniteBaseAffichee}s' : uniteBaseAffichee;
 
     return SafeArea(
       child: Padding(
@@ -293,31 +296,39 @@ class _ProduitFormSheetState extends State<ProduitFormSheet> {
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 14),
-                      child: Text("J'achète par"),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
+                    const Text("J'achète", style: TextStyle(fontSize: 15)),
+                    SizedBox(
+                      width: 70,
                       child: TextFormField(
                         controller: _achatQuantiteController,
+                        textAlign: TextAlign.center,
                         keyboardType: TextInputType.number,
-                        decoration:
-                            InputDecoration(labelText: uniteBaseAffichee),
+                        decoration: const InputDecoration(
+                            isDense: true, errorMaxLines: 2),
                         validator: _validerEntierPositif,
                       ),
                     ),
+                    Text(uniteAchatAffichee, style: const TextStyle(fontSize: 15)),
+                    const Text('à', style: TextStyle(fontSize: 15)),
+                    SizedBox(
+                      width: 110,
+                      child: TextFormField(
+                        controller: _achatPrixController,
+                        textAlign: TextAlign.center,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                            isDense: true, errorMaxLines: 2),
+                        validator: _validerMontant,
+                      ),
+                    ),
+                    Text(devise.symbole, style: const TextStyle(fontSize: 15)),
                   ],
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _achatPrixController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Au prix de'),
-                  validator: _validerMontant,
                 ),
                 const SizedBox(height: 6),
                 Text(

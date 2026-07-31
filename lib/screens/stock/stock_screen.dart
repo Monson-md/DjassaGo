@@ -6,6 +6,7 @@ import '../../models/produit.dart';
 import '../../providers/conditionnement_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/produit_provider.dart';
+import '../../utils/devises_disponibles.dart';
 import '../../utils/money.dart';
 import 'produit_form_sheet.dart';
 
@@ -30,6 +31,40 @@ String _texteStock(Produit produit, List<Conditionnement> conditionnements) {
       ? '$nGroupes $nomGroupe${nGroupes > 1 ? 's' : ''} + $reste'
       : '$nGroupes $nomGroupe${nGroupes > 1 ? 's' : ''}';
   return '$base ($detail)';
+}
+
+/// Une ligne « Bouteille : 150 FCFA · marge 75 FCFA » pour la liste Stock —
+/// un conditionnement de vente avec sa marge, affichée à côté du prix.
+Widget _ligneConditionnement(
+    Conditionnement c, int prixAchatMineur, InfoDevise devise) {
+  final margeMineur =
+      c.prixVenteMineur - c.quantiteEnUniteBase * prixAchatMineur;
+  final label =
+      c.quantiteEnUniteBase > 1 ? '${c.nom} (×${c.quantiteEnUniteBase})' : c.nom;
+  String fmt(int m) =>
+      formaterMontantMineur(m, decimales: devise.decimales, symbole: devise.symbole);
+  return Padding(
+    padding: const EdgeInsets.only(top: 2),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$label : ${fmt(c.prixVenteMineur)}',
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'marge ${fmt(margeMineur)}',
+          style: TextStyle(
+            fontSize: 11,
+            color: margeMineur < 0 ? Colors.red : Colors.grey.shade600,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Gestion du stock : liste des produits, ajout, modification et
@@ -94,16 +129,27 @@ class StockScreen extends StatelessWidget {
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final produit = produits[index];
+                // Triés par listerPour : format par défaut d'abord, puis par
+                // quantité croissante — un ordre de lecture naturel du plus
+                // petit format au plus gros.
                 final conditionnements =
                     conditionnementProvider.listerPour(produit);
-                final conditionnementParDefaut = conditionnements
-                    .firstWhere((c) => c.parDefaut, orElse: () => conditionnements.first);
+                String fmt(int m) => formaterMontantMineur(m,
+                    decimales: devise.decimales, symbole: devise.symbole);
                 return ListTile(
                   onTap: () => _ouvrirFormulaire(context, produit: produit),
                   title: Text(produit.nom),
-                  subtitle: Text(
-                    'Achat: ${formaterMontantMineur(produit.prixAchatMineur, decimales: devise.decimales, symbole: devise.symbole)}/${produit.uniteBase} · '
-                    'Vente ${conditionnementParDefaut.nom}: ${formaterMontantMineur(conditionnementParDefaut.prixVenteMineur, decimales: devise.decimales, symbole: devise.symbole)}',
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 2),
+                      Text(
+                        'Achat : ${fmt(produit.prixAchatMineur)} / ${produit.uniteBase}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                      for (final c in conditionnements)
+                        _ligneConditionnement(c, produit.prixAchatMineur, devise),
+                    ],
                   ),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
