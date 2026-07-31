@@ -39,11 +39,21 @@ Retiré du code natif : la meta-data AdMob dans `android/app/src/main/AndroidMan
 
 Pour information, un essai de build local (avant le redémarrage de la machine) a échoué avec `Failed connecting to the daemon in 4 retries` (daemon Kotlin/Gradle) — un warning notait aussi que `share_plus` applique encore l'ancien plugin Kotlin (KGP), pas `file_selector`. Cet échec n'est donc pas attribuable à `file_selector` ; il n'a pas valeur de test.
 
+## Phase 8 — nouveau job `build_web` dans GitHub Actions (jamais vérifié)
+
+`.github/workflows/build_apk.yml` a un nouveau job `build_web` (parallèle aux jobs APK, ne peut pas les faire échouer) qui exécute `flutter build web --release`. Comme pour tout le reste, impossible de le vérifier en local (règle 9 de `CLAUDE.md`, généralisée à toute cible de build, pas seulement APK/Gradle). **Ce job n'a jamais été observé en train de réussir** — seul son ajout a été vérifié par relecture. À confirmer sur l'onglet Actions de GitHub après ce push.
+
+## Phase 9 — synchronisation bidirectionnelle : préparée, jamais activée
+
+`deviceId`/`lastModified` ajoutés sur `Produit`, `Transaction`, `Dette`, `PaiementDette`, `Depense` ; `SyncConflictResolver` (dernier écrit gagne) ; journal `ConflitSynchronisation`. Tout ça reste totalement inerte derrière `syncActivee = false` (`lib/config/feature_flags.dart`) tant que Firebase n'est pas reconfiguré. Rien à vérifier manuellement pour cette phase — c'est explicitement le but : zéro changement de comportement visible.
+
 ## Encore à faire (mis à jour au fil des phases)
 
 - [ ] Keystore de signature Android pour un vrai build de release (actuellement signé avec les clés debug — `flutter run --release` fonctionne mais n'est pas publiable tel quel).
-- [ ] Projet Firebase + `flutterfire configure` (voir ci-dessus, volontairement différé).
-- [ ] Identifiants AdMob réels (voir ci-dessus, volontairement différé).
+- [ ] Projet Firebase + `flutterfire configure`, puis remettre `firebase_core`/`cloud_firestore` dans `pubspec.yaml`, écrire le vrai transport réseau dans `SyncService` (l'architecture — `deviceId`, `lastModified`, résolution des conflits — est prête depuis la Phase 9), et alors seulement passer `syncActivee` à `true` dans `lib/config/feature_flags.dart`.
+- [ ] Identifiants AdMob réels, puis passer `pubsActivees` à `true` dans `lib/config/feature_flags.dart` (voir ci-dessus, volontairement différé).
 - [ ] Compte Play Console pour la publication.
 - [ ] Confirmer sur GitHub Actions que le build passe avec `file_selector` (voir ci-dessus) ; sinon revenir en arrière et redésactiver l'import.
+- [ ] Confirmer sur GitHub Actions que le nouveau job `build_web` (Phase 8) réussit — jamais vérifié, voir ci-dessus.
 - [ ] Décider si le CI reste sur Flutter 3.44.x ou revient temporairement sur la ligne stable précédente (3.41.9) le temps que l'écosystème de plugins rattrape la migration "built-in Kotlin" — voir la discussion dans l'historique de conversation, en attente de décision.
+- [ ] Tester sur téléphone les Phases 5 à 10 (voir le récapitulatif de fin de session livré avec la Phase 10 pour le détail de ce qu'il faut vérifier).
