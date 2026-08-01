@@ -3,60 +3,123 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Politique de confidentialité — Caisse de Poche</title>
+<title>Caisse de Poche — Téléchargement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400;12..96,75..100,600;12..96,75..100,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body{font-family:-apple-system,system-ui,sans-serif;max-width:680px;margin:0 auto;padding:32px 20px 64px;color:#17150F;background:#FCFAF5;line-height:1.6}
-  h1{font-size:26px;margin-bottom:4px}
-  .maj{color:#8A8474;font-size:13px;margin-bottom:32px}
-  h2{font-size:18px;margin-top:36px;color:#1C6B57}
-  p,li{font-size:15px}
-  ul{padding-left:20px}
-  a{color:#1C6B57}
-  .encadre{background:#E7F1ED;border-radius:10px;padding:16px 18px;margin:20px 0}
+:root{
+  --ink:#17150F; --papier:#FCFAF5; --card:#FFFFFF; --line:#E4DFD3;
+  --ocre:#E0A02B; --ocre-d:#B57C13; --vert:#1C6B57; --vert-l:#E7F1ED;
+  --brique:#AF3524; --brique-l:#FBEBE8; --mute:#8A8474;
+  --disp:'Bricolage Grotesque','Inter',system-ui,sans-serif;
+  --body:'Inter',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--body);background:var(--papier);color:var(--ink);line-height:1.6}
+.awning{height:6px;display:flex}
+.awning i{flex:1}
+.awning i:nth-child(4n+1){background:var(--ocre)}
+.awning i:nth-child(4n+2){background:var(--vert)}
+.awning i:nth-child(4n+3){background:var(--brique)}
+.awning i:nth-child(4n+4){background:var(--ink)}
+
+header{background:var(--ink);color:var(--papier);padding:52px 20px 60px;text-align:center}
+.kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ocre);font-weight:700}
+h1{font-family:var(--disp);font-size:clamp(32px,7vw,52px);font-weight:800;letter-spacing:-.02em;margin-top:10px}
+.tagline{font-size:17px;color:#C9C4B4;max-width:440px;margin:14px auto 0;line-height:1.55}
+
+main{max-width:520px;margin:0 auto;padding:0 20px}
+
+.dl-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px 24px;margin-top:-32px;box-shadow:0 20px 40px -20px rgba(23,21,15,.25)}
+.dl-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  background:var(--vert);color:#fff;text-decoration:none;
+  font-family:var(--disp);font-weight:700;font-size:18px;
+  border-radius:13px;padding:18px 20px;width:100%;
+}
+.dl-btn:active{filter:brightness(.93)}
+.dl-meta{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mute);margin-top:12px;padding:0 2px}
+.note{background:var(--vert-l);color:var(--vert);border-radius:10px;padding:12px 14px;font-size:13px;margin-top:16px;line-height:1.55}
+.note b{display:block;margin-bottom:2px}
+
+section{margin-top:44px}
+h2{font-family:var(--disp);font-size:22px;font-weight:700;margin-bottom:16px;letter-spacing:-.01em}
+.feat{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--line)}
+.feat:last-child{border-bottom:0}
+.feat .ic{width:38px;height:38px;border-radius:10px;background:var(--vert-l);color:var(--vert);
+  display:grid;place-items:center;flex:none;font-size:17px;font-weight:800;font-family:var(--disp)}
+.feat h3{font-size:15px;font-weight:700;margin-bottom:2px}
+.feat p{font-size:13.5px;color:var(--mute)}
+
+.install{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.install ol{padding-left:20px;font-size:14px}
+.install li{margin-bottom:8px}
+
+footer{margin-top:56px;padding:28px 20px 40px;text-align:center;font-size:13px;color:var(--mute)}
+footer a{color:var(--vert);text-decoration:none;font-weight:600}
+footer .sep{margin:0 8px;color:var(--line)}
 </style>
 </head>
 <body>
 
-<h1>Politique de confidentialité — Caisse de Poche</h1>
-<p class="maj">Dernière mise à jour : août 2026</p>
+<header>
+  <div class="kicker">Application gratuite</div>
+  <h1>Caisse de Poche</h1>
+  <p class="tagline">La caisse, le stock et le carnet de dettes de votre boutique — sur votre téléphone, sans connexion internet.</p>
+</header>
 
-<div class="encadre">
-<strong>En résumé :</strong> Caisse de Poche fonctionne entièrement hors ligne. Aucune donnée n'est envoyée à un serveur, ni collectée par le développeur, ni partagée avec un tiers.
-</div>
+<main>
+  <div class="dl-card">
+    <a class="dl-btn" href="https://github.com/Monson-md/DjassaGo/releases/download/v1.0.0/Caisse_de_Poche.apk" download>
+      ⬇ Télécharger l'application
+    </a>
+    <div class="dl-meta">
+      <span>Version 1.0 · Android</span>
+      <span>≈ 51 Mo</span>
+    </div>
+    <div class="note">
+      <b>Aucune donnée envoyée nulle part.</b>
+      Toutes vos informations restent sur votre téléphone. Fonctionne sans réseau.
+    </div>
+  </div>
 
-<h2>1. Qui édite cette application</h2>
-<p>Caisse de Poche est développée par Monson Doumbia. Pour toute question concernant cette politique ou l'application, contact : <a href="mailto:monsondoumbia14@gmail.com">monsondoumbia14@gmail.com</a></p>
+  <section>
+    <h2>Ce que l'application fait</h2>
+    <div class="feat">
+      <div class="ic">$</div>
+      <div><h3>Caisse rapide</h3><p>Enregistrez une vente en quelques secondes, en gros ou au détail.</p></div>
+    </div>
+    <div class="feat">
+      <div class="ic">%</div>
+      <div><h3>Carnet de dettes</h3><p>Suivez qui vous doit quoi, et relancez sur WhatsApp en un geste.</p></div>
+    </div>
+    <div class="feat">
+      <div class="ic">↑</div>
+      <div><h3>Marge et résultat net</h3><p>Sachez, précisément, ce que vous gagnez chaque jour.</p></div>
+    </div>
+  </section>
 
-<h2>2. Quelles données sont collectées</h2>
-<p>Aucune. L'application ne collecte, ne transmet et ne vend aucune donnée personnelle. Elle ne contient ni compte utilisateur, ni identifiant publicitaire, ni outil d'analyse d'usage, ni service tiers de suivi.</p>
+  <section>
+    <h2>Pour installer</h2>
+    <div class="install">
+      <ol>
+        <li>Appuyez sur « Télécharger l'application » ci-dessus.</li>
+        <li>Une fois le fichier téléchargé, ouvrez-le.</li>
+        <li>Si le téléphone demande d'autoriser « sources inconnues », acceptez — c'est normal pour une app installée hors du Play Store.</li>
+        <li>Ouvrez Caisse de Poche et choisissez votre pays au premier lancement.</li>
+      </ol>
+    </div>
+  </section>
+</main>
 
-<h2>3. Où sont stockées vos données</h2>
-<p>Les informations que vous saisissez — produits, ventes, dettes clients, dépenses — sont stockées uniquement sur votre téléphone, dans la mémoire de l'application. Elles ne quittent jamais l'appareil, sauf action explicite de votre part (voir section 4).</p>
-
-<h2>4. Sauvegarde et partage volontaire</h2>
-<p>L'application propose une fonction d'export de sauvegarde : un fichier contenant vos données est alors créé, et c'est vous qui choisissez de le partager (WhatsApp, e-mail, stockage cloud personnel, etc.) via les outils natifs de votre téléphone. Ce partage est entièrement sous votre contrôle ; l'application elle-même n'envoie ce fichier nulle part.</p>
-
-<h2>5. Autorisations demandées par l'application</h2>
-<ul>
-  <li><strong>Accès au stockage</strong> — pour créer et lire les fichiers de sauvegarde que vous choisissez d'exporter ou d'importer.</li>
-  <li><strong>Ouverture d'applications externes</strong> — pour ouvrir WhatsApp ou l'application SMS lorsque vous envoyez un rappel de dette à un client.</li>
-</ul>
-<p>Aucune autre autorisation (localisation, contacts, appareil photo, micro) n'est actuellement demandée.</p>
-
-<h2>6. Publicité</h2>
-<p>L'application n'affiche actuellement aucune publicité. Si un module publicitaire venait à être ajouté dans une future version, cette politique serait mise à jour au préalable pour l'indiquer clairement.</p>
-
-<h2>7. Synchronisation en ligne</h2>
-<p>Une fonction de synchronisation cloud est prévue pour une future version, mais elle est désactivée dans la version actuelle. Le jour où elle sera activée, cette politique sera mise à jour pour décrire précisément quelles données seraient alors transmises, à quel service, et comment les désactiver.</p>
-
-<h2>8. Suppression de vos données</h2>
-<p>Désinstaller l'application supprime définitivement toutes les données stockées localement. Pensez à exporter une sauvegarde au préalable si vous souhaitez la conserver.</p>
-
-<h2>9. Public visé</h2>
-<p>Cette application est un outil de gestion commerciale destiné aux commerçants. Elle n'est pas conçue pour être utilisée par des enfants et ne collecte, dans tous les cas, aucune donnée personnelle de quiconque.</p>
-
-<h2>10. Modifications de cette politique</h2>
-<p>Cette politique peut être mise à jour si l'application évolue. La date de dernière modification figure en haut de cette page.</p>
+<div class="awning" style="margin-top:56px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<footer>
+  <a href="privacy.html">Politique de confidentialité</a>
+  <span class="sep">·</span>
+  <a href="mailto:monsondoumbia14@gmail.com">Contact</a>
+</footer>
 
 </body>
 </html>
