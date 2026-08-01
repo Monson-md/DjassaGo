@@ -1,4 +1,5 @@
 # Miscellaneous
+*.jks
 *.class
 *.log
 *.pyc
@@ -46,6 +47,9 @@ app.*.map.json
 
 # Firebase - inerte tant que Phase 9 n'est pas lancee (voir CHECKLIST.md)
 /android/app/google-services.json
+
+# Signature release - chemins et mots de passe du keystore, jamais commite
+/android/key.properties
 
 # Polices - non commitees tant que le design (Phase design) n'est pas branche (voir CLAUDE.md)
 /assets/fonts/*.ttf
