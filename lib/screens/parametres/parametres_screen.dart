@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/caisse_provider.dart';
+import '../../providers/conditionnement_provider.dart';
 import '../../providers/currency_provider.dart';
+import '../../providers/depense_provider.dart';
+import '../../providers/dette_provider.dart';
 import '../../providers/pin_provider.dart';
+import '../../providers/produit_provider.dart';
 import '../../services/backup_service.dart';
 import '../../services/diagnostic_service.dart';
 import '../../services/sync_service.dart';
@@ -37,7 +42,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
     if (!mounted) return;
     setState(() => _synchronisationEnCours = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Synchronisation cloud non configurée pour le moment')),
+      const SnackBar(
+        content: Text('Synchronisation cloud non configurée pour le moment'),
+      ),
     );
   }
 
@@ -61,9 +68,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: contenu));
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                const SnackBar(content: Text('Journal copié')),
-              );
+              ScaffoldMessenger.of(
+                ctx,
+              ).showSnackBar(const SnackBar(content: Text('Journal copié')));
             },
             child: const Text('Copier'),
           ),
@@ -86,9 +93,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Échec de l'export : $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Échec de l'export : $e")));
     } finally {
       if (mounted) setState(() => _exportEnCours = false);
     }
@@ -132,17 +139,54 @@ class _ParametresScreenState extends State<ParametresScreen> {
         ),
       );
       if (remplacer == null) return;
-
-      await _backupService.restaurer(fichier, remplacer: remplacer);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+
+      // Import sous dialogue modal bloquant : les données sont réécrites
+      // en masse, aucun geste pendant ce temps ne doit être possible.
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context);
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const _DialogueRestaurationEnCours(),
+      );
+      try {
+        await _backupService.restaurer(fichier, remplacer: remplacer);
+      } on Object catch (e) {
+        navigator.pop(); // ferme le dialogue bloquant
+        if (!mounted) return;
+        if (e is RestaurationSauvegardeEchoueeException) {
+          // Le message porte l'état des données (intactes ou non) et le
+          // chemin du point de restauration, toujours exploitable.
+          messenger.showSnackBar(
+            SnackBar(content: Text('$e'), duration: const Duration(seconds: 8)),
+          );
+        } else {
+          messenger.showSnackBar(
+            SnackBar(content: Text("Échec de l'import : $e")),
+          );
+        }
+        return;
+      }
+      navigator.pop(); // ferme le dialogue bloquant
+      if (!mounted) return;
+
+      // Les boxes Hive ont changé sous les pieds des providers : on les
+      // recharge tous, et on vide le panier (ses articles reposent sur
+      // d'éventuels enregistrements remplacés).
+      context.read<ProduitProvider>().charger();
+      context.read<ConditionnementProvider>().charger();
+      context.read<DetteProvider>().charger();
+      context.read<DepenseProvider>().charger();
+      context.read<CaisseProvider>().viderPanier();
+      messenger.showSnackBar(
         const SnackBar(content: Text('Sauvegarde restaurée.')),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Échec de l'import : $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Échec de l'import : $e")));
     } finally {
       if (mounted) setState(() => _importEnCours = false);
     }
@@ -159,9 +203,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
         builder: (_) => const GererPinSheet(),
       );
     } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const CreationPinScreen()),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CreationPinScreen()));
     }
   }
 
@@ -179,13 +223,16 @@ class _ParametresScreenState extends State<ParametresScreen> {
             Card(
               color: Colors.orange.shade50,
               child: ListTile(
-                leading: Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                leading: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange.shade800,
+                ),
                 title: const Text('Pensez à sauvegarder vos données'),
                 subtitle: Text(
                   _backupService.derniereSauvegardeLe() == null
                       ? "Aucune sauvegarde n'a encore été faite."
                       : 'Dernière sauvegarde le '
-                          '${formaterDate(_backupService.derniereSauvegardeLe()!)}.',
+                            '${formaterDate(_backupService.derniereSauvegardeLe()!)}.',
                 ),
               ),
             ),
@@ -253,7 +300,9 @@ class _ParametresScreenState extends State<ParametresScreen> {
             child: ListTile(
               leading: const Icon(Icons.attach_money),
               title: const Text('Devise'),
-              subtitle: Text('${currency.devise.nom} (${currency.symboleDevise})'),
+              subtitle: Text(
+                '${currency.devise.nom} (${currency.symboleDevise})',
+              ),
             ),
           ),
           Card(
@@ -289,6 +338,37 @@ class _ParametresScreenState extends State<ParametresScreen> {
           const SizedBox(height: 24),
           const Center(child: BannierePub()),
         ],
+      ),
+    );
+  }
+}
+
+/// Dialogue non refermable affiché pendant l'écriture de l'import : pas
+/// de retour arrière (pop, bouton système) tant que la restauration n'a
+/// pas abouti ou échoué explicitement.
+class _DialogueRestaurationEnCours extends StatelessWidget {
+  const _DialogueRestaurationEnCours();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        content: const Row(
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            SizedBox(width: 20),
+            Expanded(
+              child: Text(
+                "Restauration en cours, ne fermez pas l'application.",
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
