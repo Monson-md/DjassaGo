@@ -37,10 +37,19 @@ class ParametresKeys {
 
   /// Version du schéma Hive attendue par le code actuel. Comparée à la
   /// valeur stockée à chaque démarrage (voir HiveService.init) : en cas
-  /// de désaccord, les boxes de données locales sont effacées plutôt que
-  /// de risquer une erreur de cast au premier accès à un champ dont le
-  /// type a changé entre deux versions de l'app.
+  /// de désaccord, une MIGRATION versionnée s'exécute (ou, en l'absence
+  /// de migrateur, le démarrage est refusé explicitement) — jamais
+  /// d'effacement de données. Voir ParametresKeys.migrationHiveEnCours
+  /// pour le journal qui rend chaque migration récupérable.
   static const String schemaVersion = 'schema_version';
+
+  /// Journal d'une migration Hive en cours (voir
+  /// lib/services/hive_migrations.dart et HiveService.init). Absent en
+  /// temps normal ; présent seulement entre le début d'une migration et
+  /// sa validation complète. En cas d'arrêt brutal pendant la migration,
+  /// cette entrée déclenche au démarrage suivant la restauration de la
+  /// sauvegarde brute correspondante — jamais un effacement.
+  static const String migrationHiveEnCours = 'migration_hive_en_cours';
 
   /// Identifiant stable de cet appareil (UUID v4), généré une seule fois
   /// par DeviceIdService et utilisé comme départage lors d'un conflit de
