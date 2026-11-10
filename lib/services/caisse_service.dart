@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 
+import '../models/dette.dart';
 import '../models/item_vendu.dart';
 import '../models/mode_paiement.dart';
 import '../models/produit.dart';
@@ -357,27 +358,74 @@ class CaisseService {
     });
   }
 
-  /// Annule une vente : remet en stock chaque article vendu et marque la
-  /// transaction comme annulée (voir [model.Transaction.marquerAnnulee]) —
-  /// elle n'est jamais supprimée physiquement, seulement exclue des
-  /// statistiques du jour ([transactionsDuJour]) tout en restant
-  /// consultable dans le journal ([toutesLesTransactions]).
+  /// Annule une vente de façon **atomique et sérialisée** : remise en
+  /// stock de chaque article vendu, suppression de la dette liée pour une
+  /// vente à crédit (plus rien à recouvrer), puis marquage de la
+  /// transaction ([model.Transaction.marquerAnnulee]) — elle n'est jamais
+  /// supprimée physiquement, seulement exclue des statistiques du jour
+  /// ([transactionsDuJour]) tout en restant consultable dans le journal
+  /// ([toutesLesTransactions]).
   ///
   /// S'exécute sous [_verrouVentes], comme les ventes : la remise de stock
   /// ne peut s'entrelacer avec une finalisation (ni se faire écraser par
   /// le rollback d'une vente concurrente, ni s'en faire le témoin
   /// intermédiaire).
   ///
-  /// Si la vente était à crédit, la dette liée est supprimée (la vente est
-  /// nulle, il n'y a plus rien à recouvrer) — mais seulement si aucun
-  /// paiement n'a encore été reçu dessus. Dans le cas contraire,
-  /// l'annulation est bloquée : supprimer la dette ferait disparaître un
-  /// encaissement réel déjà en caisse.
+  /// Quatre phases (correction C5) :
+  ///
+  /// 0. Validation complète **avant la moindre écriture** :
+  ///    - la transaction doit exister et n'être pas déjà annulée ;
+  ///    - pour une vente à crédit, la dette liée
+  ///      ([DetteService.trouverParTransactionId]) ne doit avoir reçu
+  ///      **aucun** paiement — dans le cas contraire l'annulation est
+  ///      bloquée sans la moindre écriture : supprimer la dette ferait
+  ///      disparaître un encaissement réel déjà en caisse ;
+  ///    - chaque produit à restituer doit exister encore. Les
+  ///      restitutions sont **agrégées** par produit (itemsVendus peut
+  ///      contenir plusieurs lignes du même produit avec des
+  ///      conditionnements différents). Si un produit a été supprimé
+  ///      depuis la vente, l'annulation est REFUSÉE avant tout changement
+  ///      avec un message nommant le produit : la dette reste intacte,
+  ///      les stocks ne bougent pas et la vente reste comptée.
+  /// 1. Remise en stock : **une seule écriture par produit agrégé** (pas
+  ///    une par ligne de la vente).
+  /// 2. Suppression de la dette liée, seulement après une remise en stock
+  ///    réussie (pas de dette : vente au comptant ou dette déjà absente —
+  ///    continuer normalement).
+  /// 3. Marquage de la transaction, **en dernier** : tant que tout n'a
+  ///    pas réussi, la vente reste comptée dans le chiffre d'affaires.
+  ///
+  /// Si une écriture échoue après le début des écritures, un rollback
+  /// compense dans l'ordre inverse des artefacts touchés :
+  ///
+  /// - **stocks** : restaurés depuis les snapshots pris sous verrou avant
+  ///   toute écriture (voir [finaliserVente] pour le même principe),
+  ///   re-persistés un par un — sans jamais ressusciter un produit
+  ///   supprimé entre-temps ;
+  /// - **dette** : si sa suppression a été tentée, elle est réécrite
+  ///   **telle quelle** via HiveService.dettesBox.put — jamais
+  ///   [DetteService.ajouter], qui générerait un nouvel identifiant et
+  ///   re-normaliserait le téléphone ;
+  /// - **transaction** : si le marquage a été tenté, ses champs
+  ///   d'annulation sont restaurés depuis le snapshot et une nouvelle
+  ///   tentative de sauvegarde (best-effort) est faite.
+  ///
+  /// Compensation complète → l'erreur d'origine est re-propagée telle
+  /// quelle, sans la masquer. Compensation incomplète → une exception
+  /// explicite combine l'erreur d'origine et la liste des opérations non
+  /// restaurées (stock / dette / transaction) et recommande un contrôle
+  /// manuel — même principe que le message de rollback de
+  /// [_finaliserVenteSousVerrou].
   Future<model.Transaction> annulerTransaction({
     required String transactionId,
     required String motif,
   }) {
     return _verrouVentes.executer(() async {
+      //
+      // Phase 0 — validation complète, avant toute écriture. Si cette
+      // phase échoue, rien n'a été modifié : ni stock, ni dette, ni
+      // transaction.
+      //
       final transaction = HiveService.transactionsBox.get(transactionId);
       if (transaction == null) {
         throw Exception('Transaction introuvable');
@@ -386,29 +434,182 @@ class CaisseService {
         throw Exception('Cette vente est déjà annulée');
       }
 
+      // Agrégation des restitutions par produit : le stock est compté en
+      // unité de base, [quantite] exemplaires d'une ligne valent
+      // [quantite] × [quantiteEnUniteBase] unités. Deux lignes du même
+      // produit (conditionnements différents) restituent un stock commun
+      // et doivent être traitées ensemble, pas ligne par ligne — c'est
+      // l'opération miroir de l'agrégation de _finaliserVenteSousVerrou.
+      final restitutionsParProduit = <String, int>{};
+      for (final item in transaction.itemsVendus) {
+        restitutionsParProduit[item.produitId] =
+            (restitutionsParProduit[item.produitId] ?? 0) +
+            item.quantite * item.quantiteEnUniteBase;
+      }
+
+      // Vente à crédit : retrouver la dette liée. Si elle existe, aucun
+      // paiement ne doit avoir été enregistré dessus — contrôle fait
+      // AVANT l'existence des produits (l'encaissement réel prime),
+      // refus immédiat sans la moindre écriture.
+      Dette? detteLiee;
       if (transaction.modePaiement == ModePaiement.credit) {
-        final dette = _detteService.trouverParTransactionId(transaction.id);
-        if (dette != null) {
-          if (_detteService.paiementsPour(dette.id).isNotEmpty) {
-            throw Exception(
-              "Impossible d'annuler : des paiements ont déjà été reçus sur la dette liée.",
-            );
-          }
-          await _detteService.supprimer(dette.id);
+        detteLiee = _detteService.trouverParTransactionId(transaction.id);
+        if (detteLiee != null &&
+            _detteService.paiementsPour(detteLiee.id).isNotEmpty) {
+          throw Exception(
+            "Impossible d'annuler : des paiements ont déjà été reçus "
+            'sur la dette liée.',
+          );
         }
       }
 
-      for (final item in transaction.itemsVendus) {
-        await _produitService.reapprovisionner(
-          item.produitId,
-          item.quantite * item.quantiteEnUniteBase,
-        );
+      // Tous les produits à restituer doivent exister encore : remettre
+      // en stock un produit supprimé est impossible, et annuler sans lui
+      // laisser un stock inexistant. Refus AVANT toute écriture — la
+      // dette reste intacte et la vente reste comptée dans le CA.
+      final produitsTouches = <String, Produit>{};
+      for (final produitId in restitutionsParProduit.keys) {
+        final produit = _produitService.trouverParId(produitId);
+        if (produit == null) {
+          final nomProduit = transaction.itemsVendus
+              .firstWhere((i) => i.produitId == produitId)
+              .nomProduit;
+          throw Exception(
+            "Impossible d'annuler la vente : le produit « $nomProduit » "
+            '($produitId) n\'existe plus (supprimé depuis la vente). '
+            "Aucun changement n'a été effectué : le stock, la dette "
+            "liée et la transaction sont inchangés.",
+          );
+        }
+        produitsTouches[produitId] = produit;
       }
 
-      transaction.marquerAnnulee(motif: motif);
-      transaction.deviceId = DeviceIdService.obtenir();
-      await transaction.save();
-      return transaction;
+      // Snapshots pour le rollback : stock (et champs de synchronisation)
+      // de chaque produit concerné, état d'annulation de la transaction,
+      // référence de la dette s'il y en a une.
+      final stocksAvant = <String, _EtatProduitFigee>{
+        for (final e in produitsTouches.entries)
+          e.key: _EtatProduitFigee(
+            stockActuel: e.value.stockActuel,
+            deviceId: e.value.deviceId,
+            lastModified: e.value.lastModified,
+          ),
+      };
+      final annulationAvant = _EtatAnnulationFigee(
+        annulee: transaction.annulee,
+        dateAnnulation: transaction.dateAnnulation,
+        motifAnnulation: transaction.motifAnnulation,
+        deviceId: transaction.deviceId,
+        lastModified: transaction.lastModified,
+      );
+
+      // Suivi des écritures tentées, pour ne compenser que ce qui a
+      // effectivement pu être touché : une phase qui n'a pas démarré
+      // n'a rien à annuler.
+      var detteSupprimeeTentee = false;
+      var marquageTente = false;
+      try {
+        // Phase 1 — remise en stock : une seule écriture par produit
+        // agrégé (pas une par ligne de la vente).
+        for (final restitution in restitutionsParProduit.entries) {
+          await _produitService.reapprovisionner(
+            restitution.key,
+            restitution.value,
+          );
+        }
+
+        // Phase 2 — suppression de la dette liée, uniquement après que
+        // toute la remise en stock a réussi.
+        if (detteLiee != null) {
+          detteSupprimeeTentee = true;
+          await _detteService.supprimer(detteLiee.id);
+        }
+
+        // Phase 3 — marquage en dernier : tant que tout n'a pas réussi,
+        // la vente reste comptée dans le chiffre d'affaires.
+        marquageTente = true;
+        transaction.marquerAnnulee(motif: motif);
+        transaction.deviceId = DeviceIdService.obtenir();
+        await transaction.save();
+        return transaction;
+      } on Object catch (erreurOrigine) {
+        // Rollback par compensation : remise en état mémoire + disque,
+        // dans l'ordre inverse des artefacts touchés (stocks, dette,
+        // transaction). Si une persistance de compensation échoue
+        // elle aussi, l'opération est signalée à l'appelant plutôt que
+        // de laisser croire à un échec silencieux.
+        final operationsNonRestaurees = <String>[];
+
+        // 1) Stocks : valeur du snapshot (stock, deviceId, lastModified),
+        //    puis save pour chaque produit touché. Un produit supprimé
+        //    entre-temps n'est PAS ressuscité : son réapprovisionnement
+        //    n'a rien restitué, et un save() sur l'objet détaché
+        //    réécrirait sa clé — réinjectant une fiche orpheline dans
+        //    la boutique. D'où le contrôle par la box, clé absente = on
+        //    passe.
+        var stockPersiste = true;
+        for (final produit in produitsTouches.values) {
+          if (!HiveService.produitsBox.containsKey(produit.id)) continue;
+          final avant = stocksAvant[produit.id]!;
+          produit.stockActuel = avant.stockActuel;
+          produit.deviceId = avant.deviceId;
+          produit.lastModified = avant.lastModified;
+          try {
+            await produit.save();
+          } catch (_) {
+            stockPersiste = false;
+          }
+        }
+        if (!stockPersiste) {
+          operationsNonRestaurees.add('restauration du stock sur disque');
+        }
+
+        // 2) Dette : si sa suppression a été tentée (elle a peut-être
+        //    déjà quitté la box quand l'erreur a surgi), la réécrire
+        //    TELLE QUELLE — même objet, même id — via la box Hive.
+        //    Jamais DetteService.ajouter : nouvel identifiant et
+        //    re-normalisation du téléphone, donc une dette différente.
+        if (detteSupprimeeTentee) {
+          try {
+            await HiveService.dettesBox.put(detteLiee!.id, detteLiee);
+          } catch (_) {
+            operationsNonRestaurees.add('réécriture de la dette');
+          }
+        }
+
+        // 3) Transaction : le marquage a modifié les champs d'annulation
+        //    de l'objet en mémoire — les restaurer depuis le snapshot,
+        //    puis retenter une sauvegarde best-effort pour remettre le
+        //    disque d'accord (l'objet reste compté dans le CA).
+        if (marquageTente) {
+          transaction.annulee = annulationAvant.annulee;
+          transaction.dateAnnulation = annulationAvant.dateAnnulation;
+          transaction.motifAnnulation = annulationAvant.motifAnnulation;
+          transaction.deviceId = annulationAvant.deviceId;
+          transaction.lastModified = annulationAvant.lastModified;
+          try {
+            await transaction.save();
+          } catch (_) {
+            operationsNonRestaurees.add('restauration de la transaction');
+          }
+        }
+
+        if (operationsNonRestaurees.isNotEmpty) {
+          // Compensation incomplète : exception explicite qui emporte
+          // l'erreur d'origine, pour ne jamais la masquer.
+          throw Exception(
+            "L'annulation de la vente a échoué (erreur d'origine : "
+            '$erreurOrigine) et la remise en état a été incomplète '
+            '(${operationsNonRestaurees.join(', ')}) : un contrôle '
+            'manuel du stock, de la transaction et du carnet de dettes '
+            'est recommandé.',
+          );
+        }
+
+        // Compensation complète : l'état est celui d'avant la tentative,
+        // l'appelant voit l'erreur d'origine, rien de plus.
+        rethrow;
+      }
     });
   }
 
@@ -544,4 +745,41 @@ class CaisseService {
         .where((t) => !t.synchronise)
         .toList();
   }
+}
+
+/// État d'un produit figé par [CaisseService.annulerTransaction] avant
+/// toute écriture : sert au rollback à restaurer exactement le stock tel
+/// qu'il était sous verrou (deviceId et lastModified y sont figés aussi,
+/// car c'est le triple que réapprovisionner modifie).
+class _EtatProduitFigee {
+  final int stockActuel;
+  final String deviceId;
+  final DateTime? lastModified;
+
+  const _EtatProduitFigee({
+    required this.stockActuel,
+    required this.deviceId,
+    required this.lastModified,
+  });
+}
+
+/// Champs d'annulation d'une transaction figés par
+/// [CaisseService.annulerTransaction] avant toute écriture :
+/// [model.Transaction.marquerAnnulee] modifie annulee, dateAnnulation,
+/// motifAnnulation et lastModified — et l'écriture finale recycle
+/// deviceId. Le rollback restaure les cinq à l'identique.
+class _EtatAnnulationFigee {
+  final bool annulee;
+  final DateTime? dateAnnulation;
+  final String? motifAnnulation;
+  final String deviceId;
+  final DateTime? lastModified;
+
+  const _EtatAnnulationFigee({
+    required this.annulee,
+    required this.dateAnnulation,
+    required this.motifAnnulation,
+    required this.deviceId,
+    required this.lastModified,
+  });
 }
