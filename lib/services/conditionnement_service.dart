@@ -4,16 +4,24 @@ import '../models/conditionnement.dart';
 import '../models/produit.dart';
 import 'device_id_service.dart';
 import 'hive_service.dart';
+import 'normalisation_conditionnements.dart';
 
 /// Une ligne de conditionnement telle que saisie dans le formulaire produit
 /// (lib/screens/stock/produit_form_sheet.dart), avant d'être persistée.
+///
+/// [id] est l'identifiant stable du conditionnement existant en cours
+/// d'édition ; `null` pour une ligne nouvellement ajoutée. C'est lui qui
+/// permet à [ConditionnementService.remplacerPour] de mettre à jour sans
+/// recréer (et donc de préserver les identifiants déjà connus).
 class ConditionnementBrouillon {
+  final String? id;
   final String nom;
   final int quantiteEnUniteBase;
   final double prixVente;
   final bool parDefaut;
 
   const ConditionnementBrouillon({
+    this.id,
     required this.nom,
     required this.quantiteEnUniteBase,
     required this.prixVente,
@@ -34,13 +42,14 @@ class ConditionnementService {
       HiveService.conditionnementsBox.values.toList();
 
   List<Conditionnement> listerPour(String produitId) {
-    final liste = HiveService.conditionnementsBox.values
-        .where((c) => c.produitId == produitId)
-        .toList()
-      ..sort((a, b) {
-        if (a.parDefaut != b.parDefaut) return a.parDefaut ? -1 : 1;
-        return a.quantiteEnUniteBase.compareTo(b.quantiteEnUniteBase);
-      });
+    final liste =
+        HiveService.conditionnementsBox.values
+            .where((c) => c.produitId == produitId)
+            .toList()
+          ..sort((a, b) {
+            if (a.parDefaut != b.parDefaut) return a.parDefaut ? -1 : 1;
+            return a.quantiteEnUniteBase.compareTo(b.quantiteEnUniteBase);
+          });
     return liste;
   }
 
@@ -74,7 +83,9 @@ class ConditionnementService {
       lastModified: DateTime.now(),
     );
     await HiveService.conditionnementsBox.put(
-        conditionnement.id, conditionnement);
+      conditionnement.id,
+      conditionnement,
+    );
     return conditionnement;
   }
 
@@ -88,29 +99,85 @@ class ConditionnementService {
   /// risque pour l'historique : une [Transaction] passée ne référence jamais
   /// un Conditionnement par id, seulement par son nom et sa quantité figés
   /// au moment de la vente (voir lib/models/item_vendu.dart).
+  ///
+  /// Deux garanties (mission I1) :
+  /// - **validation avant toute suppression** : noms non vides, noms uniques
+  ///   après normalisation et quantités > 0 sont vérifiés AVANT de toucher
+  ///   aux conditionnements existants. En cas d'erreur, rien n'est supprimé
+  ///   ni écrit ;
+  /// - **identifiants stables** : un brouillon portant un [id] existant met
+  ///   à jour ce conditionnement sur place (même id), un brouillon sans id
+  ///   est créé, et seuls les conditionnements absents des brouillons sont
+  ///   réellement supprimés.
   Future<List<Conditionnement>> remplacerPour({
     required String produitId,
     required List<ConditionnementBrouillon> brouillons,
     required String devise,
   }) async {
-    if (brouillons.isEmpty) {
-      throw Exception('Un produit doit avoir au moins un conditionnement');
+    final erreurValidation = validerNomsEtQuantitesConditionnements(
+      noms: [for (final b in brouillons) b.nom],
+      quantitesEnUniteBase: [for (final b in brouillons) b.quantiteEnUniteBase],
+    );
+    if (erreurValidation != null) {
+      throw Exception(erreurValidation);
     }
-    for (final existant in listerPour(produitId)) {
-      await HiveService.conditionnementsBox.delete(existant.id);
+
+    final idsFournis = [
+      for (final b in brouillons)
+        if (b.id != null) b.id!,
+    ];
+    if (idsFournis.length != idsFournis.toSet().length) {
+      throw Exception(
+        'Deux formats de vente ne peuvent pas partager le même identifiant.',
+      );
     }
-    final crees = <Conditionnement>[];
+
+    final existants = listerPour(produitId);
+    final existantsParId = {for (final c in existants) c.id: c};
+    final idsConserves = <String>{};
+    final resultat = <Conditionnement>[];
+
     for (final brouillon in brouillons) {
-      crees.add(await ajouter(
-        produitId: produitId,
-        nom: brouillon.nom,
-        quantiteEnUniteBase: brouillon.quantiteEnUniteBase,
-        prixVente: brouillon.prixVente,
-        devise: devise,
-        parDefaut: brouillon.parDefaut,
-      ));
+      final existant = brouillon.id == null
+          ? null
+          : existantsParId[brouillon.id!];
+      if (existant != null) {
+        final misAJour = Conditionnement(
+          id: existant.id,
+          produitId: produitId,
+          nom: brouillon.nom,
+          quantiteEnUniteBase: brouillon.quantiteEnUniteBase,
+          prixVente: brouillon.prixVente,
+          parDefaut: brouillon.parDefaut,
+          devise: devise,
+          deviceId: DeviceIdService.obtenir(),
+          lastModified: DateTime.now(),
+        );
+        await HiveService.conditionnementsBox.put(existant.id, misAJour);
+        idsConserves.add(existant.id);
+        resultat.add(misAJour);
+      } else {
+        final cree = await ajouter(
+          produitId: produitId,
+          nom: brouillon.nom,
+          quantiteEnUniteBase: brouillon.quantiteEnUniteBase,
+          prixVente: brouillon.prixVente,
+          devise: devise,
+          parDefaut: brouillon.parDefaut,
+        );
+        idsConserves.add(cree.id);
+        resultat.add(cree);
+      }
     }
-    return crees;
+
+    // Suppression uniquement des formats réellement retirés, APRÈS la
+    // validation et les écritures : un échec de validation n'a rien détruit.
+    for (final existant in existants) {
+      if (!idsConserves.contains(existant.id)) {
+        await HiveService.conditionnementsBox.delete(existant.id);
+      }
+    }
+    return resultat;
   }
 
   /// Conditionnement affiché pour un produit qui n'a rien d'enregistré,
@@ -118,10 +185,13 @@ class ConditionnementService {
   /// produit. Utilisé pour l'affichage (écrans Caisse et Stock) — voir
   /// [migrerSiAbsent] pour la version qui persiste réellement ce
   /// conditionnement (utilisée à l'import d'une sauvegarde ancienne).
-  Conditionnement conditionnementSynthetique(Produit produit) => Conditionnement(
+  Conditionnement conditionnementSynthetique(Produit produit) =>
+      Conditionnement(
         id: '_synthetique_${produit.id}',
         produitId: produit.id,
-        nom: _capitaliser(produit.uniteBase.isEmpty ? 'unité' : produit.uniteBase),
+        nom: _capitaliser(
+          produit.uniteBase.isEmpty ? 'unité' : produit.uniteBase,
+        ),
         quantiteEnUniteBase: 1,
         prixVente: produit.prixVente,
         parDefaut: true,
@@ -138,7 +208,9 @@ class ConditionnementService {
     if (existants.isNotEmpty) return existants.first;
     return ajouter(
       produitId: produit.id,
-      nom: _capitaliser(produit.uniteBase.isEmpty ? 'unité' : produit.uniteBase),
+      nom: _capitaliser(
+        produit.uniteBase.isEmpty ? 'unité' : produit.uniteBase,
+      ),
       quantiteEnUniteBase: 1,
       prixVente: produit.prixVente,
       devise: produit.devise,

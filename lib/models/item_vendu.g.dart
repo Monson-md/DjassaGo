@@ -26,13 +26,14 @@ class ItemVenduAdapter extends TypeAdapter<ItemVendu> {
       prixUnitaireAchatMineur: fields[6] == null ? 0 : fields[6] as int,
       conditionnementNom: fields[7] == null ? '' : fields[7] as String,
       quantiteEnUniteBase: fields[8] == null ? 1 : fields[8] as int,
+      conditionnementId: fields[9] == null ? '' : fields[9] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ItemVendu obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.produitId)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class ItemVenduAdapter extends TypeAdapter<ItemVendu> {
       ..writeByte(7)
       ..write(obj.conditionnementNom)
       ..writeByte(8)
-      ..write(obj.quantiteEnUniteBase);
+      ..write(obj.quantiteEnUniteBase)
+      ..writeByte(9)
+      ..write(obj.conditionnementId);
   }
 
   @override

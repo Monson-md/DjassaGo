@@ -16,6 +16,12 @@ class Produit extends HiveObject {
   @HiveField(2)
   double prixAchat;
 
+  /// Prix de vente d'UNE unité de base (comme [prixAchat]), et non le prix
+  /// d'un conditionnement. Exemple : un casier de 20 vendu 2000 a un
+  /// [prixVente] de 100 ; le prix affiché en caisse reste celui du
+  /// conditionnement choisi (2000), figé dans l'ItemVendu au moment de la
+  /// vente. Voir [prixVenteMineur] pour la source de vérité en unités
+  /// mineures et [Conditionnement] pour les formats de vente.
   @HiveField(3)
   double prixVente;
 
@@ -42,6 +48,13 @@ class Produit extends HiveObject {
   @HiveField(9, defaultValue: 0)
   int prixAchatMineur;
 
+  /// Prix de vente d'une unité de base, en unités mineures de la devise
+  /// (voir lib/utils/money.dart) — pendant entier de [prixVente]. Source de
+  /// vérité pour tout nouveau calcul, comme [prixAchatMineur]. Les
+  /// enregistrements historiques (avant la correction I2) peuvent encore
+  /// contenir le prix d'un conditionnement : aucune migration n'est faite
+  /// dans la mission B1, seules les nouvelles saisies et éditions sont
+  /// correctes.
   @HiveField(10, defaultValue: 0)
   int prixVenteMineur;
 
@@ -85,11 +98,13 @@ class Produit extends HiveObject {
     this.deviceId = '',
     this.lastModified,
     this.uniteBase = 'unité',
-  })  : dateCreation = dateCreation ?? DateTime.now(),
-        prixAchatMineur = prixAchatMineur ??
-            versUnitesMineures(prixAchat, decimalesPourCodeIso(devise)),
-        prixVenteMineur = prixVenteMineur ??
-            versUnitesMineures(prixVente, decimalesPourCodeIso(devise));
+  }) : dateCreation = dateCreation ?? DateTime.now(),
+       prixAchatMineur =
+           prixAchatMineur ??
+           versUnitesMineures(prixAchat, decimalesPourCodeIso(devise)),
+       prixVenteMineur =
+           prixVenteMineur ??
+           versUnitesMineures(prixVente, decimalesPourCodeIso(devise));
 
   /// Met à jour les prix d'achat et de vente en gardant les champs en
   /// unités mineures synchronisés. À utiliser à la place d'une affectation
@@ -100,6 +115,20 @@ class Produit extends HiveObject {
     final decimales = decimalesPourCodeIso(devise);
     prixAchatMineur = versUnitesMineures(prixAchat, decimales);
     prixVenteMineur = versUnitesMineures(prixVente, decimales);
+    lastModified = DateTime.now();
+  }
+
+  /// Met à jour uniquement le prix de vente de l'unité de base (et son
+  /// pendant en unités mineures). Utilisé par le formulaire produit quand
+  /// seul le prix de vente change ; [definirPrix] reste la méthode à
+  /// privilégier quand prix d'achat et prix de vente sont modifiés
+  /// ensemble.
+  void definirPrixVenteUniteBase(double prixVente) {
+    this.prixVente = prixVente;
+    prixVenteMineur = versUnitesMineures(
+      prixVente,
+      decimalesPourCodeIso(devise),
+    );
     lastModified = DateTime.now();
   }
 
@@ -126,40 +155,40 @@ class Produit extends HiveObject {
   /// sauvegarde (lib/services/backup_service.dart) — distincte de
   /// [toMap] qui ne sert qu'à la synchronisation Firestore.
   Map<String, dynamic> versJson() => {
-        'id': id,
-        'nom': nom,
-        'prixAchat': prixAchat,
-        'prixVente': prixVente,
-        'stockActuel': stockActuel,
-        'devise': devise,
-        'dateCreation': dateCreation.toIso8601String(),
-        'dateModification': dateModification?.toIso8601String(),
-        'synchronise': synchronise,
-        'prixAchatMineur': prixAchatMineur,
-        'prixVenteMineur': prixVenteMineur,
-        'deviceId': deviceId,
-        'lastModified': lastModified?.toIso8601String(),
-        'uniteBase': uniteBase,
-      };
+    'id': id,
+    'nom': nom,
+    'prixAchat': prixAchat,
+    'prixVente': prixVente,
+    'stockActuel': stockActuel,
+    'devise': devise,
+    'dateCreation': dateCreation.toIso8601String(),
+    'dateModification': dateModification?.toIso8601String(),
+    'synchronise': synchronise,
+    'prixAchatMineur': prixAchatMineur,
+    'prixVenteMineur': prixVenteMineur,
+    'deviceId': deviceId,
+    'lastModified': lastModified?.toIso8601String(),
+    'uniteBase': uniteBase,
+  };
 
   factory Produit.depuisJson(Map<String, dynamic> json) => Produit(
-        id: json['id'] as String,
-        nom: json['nom'] as String,
-        prixAchat: (json['prixAchat'] as num).toDouble(),
-        prixVente: (json['prixVente'] as num).toDouble(),
-        stockActuel: json['stockActuel'] as int,
-        devise: json['devise'] as String,
-        dateCreation: DateTime.parse(json['dateCreation'] as String),
-        dateModification: json['dateModification'] == null
-            ? null
-            : DateTime.parse(json['dateModification'] as String),
-        synchronise: json['synchronise'] as bool? ?? false,
-        prixAchatMineur: json['prixAchatMineur'] as int?,
-        prixVenteMineur: json['prixVenteMineur'] as int?,
-        deviceId: json['deviceId'] as String? ?? '',
-        lastModified: json['lastModified'] == null
-            ? null
-            : DateTime.parse(json['lastModified'] as String),
-        uniteBase: json['uniteBase'] as String? ?? 'unité',
-      );
+    id: json['id'] as String,
+    nom: json['nom'] as String,
+    prixAchat: (json['prixAchat'] as num).toDouble(),
+    prixVente: (json['prixVente'] as num).toDouble(),
+    stockActuel: json['stockActuel'] as int,
+    devise: json['devise'] as String,
+    dateCreation: DateTime.parse(json['dateCreation'] as String),
+    dateModification: json['dateModification'] == null
+        ? null
+        : DateTime.parse(json['dateModification'] as String),
+    synchronise: json['synchronise'] as bool? ?? false,
+    prixAchatMineur: json['prixAchatMineur'] as int?,
+    prixVenteMineur: json['prixVenteMineur'] as int?,
+    deviceId: json['deviceId'] as String? ?? '',
+    lastModified: json['lastModified'] == null
+        ? null
+        : DateTime.parse(json['lastModified'] as String),
+    uniteBase: json['uniteBase'] as String? ?? 'unité',
+  );
 }

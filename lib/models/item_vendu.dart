@@ -47,6 +47,16 @@ class ItemVendu extends HiveObject {
   @HiveField(8, defaultValue: 1)
   int quantiteEnUniteBase;
 
+  /// Identifiant du conditionnement vendu, figé au moment de la vente comme
+  /// [conditionnementNom] et [quantiteEnUniteBase]. Il sert uniquement à la
+  /// fusion des lignes du panier (voir CaisseProvider.ajouterAuPanier) :
+  /// deux conditionnements différents peuvent porter le même nom (« Casier »
+  /// de 12 et « Casier » de 24), et ne doivent jamais être confondus.
+  /// Chaîne vide pour les ventes enregistrées avant l'introduction de ce
+  /// champ — la fusion retombe alors sur le nom (comportement historique).
+  @HiveField(9, defaultValue: '')
+  String conditionnementId;
+
   ItemVendu({
     required this.produitId,
     required this.nomProduit,
@@ -57,6 +67,7 @@ class ItemVendu extends HiveObject {
     this.prixUnitaireAchatMineur = 0,
     this.conditionnementNom = '',
     this.quantiteEnUniteBase = 1,
+    this.conditionnementId = '',
   });
 
   double get sousTotal => prixUnitaireVente * quantite;
@@ -72,26 +83,28 @@ class ItemVendu extends HiveObject {
   /// sauvegarde (lib/services/backup_service.dart) — distincte de
   /// [Transaction.toMap] qui ne sert qu'à la synchronisation Firestore.
   Map<String, dynamic> versJson() => {
-        'produitId': produitId,
-        'nomProduit': nomProduit,
-        'quantite': quantite,
-        'prixUnitaireVente': prixUnitaireVente,
-        'prixUnitaireAchat': prixUnitaireAchat,
-        'prixUnitaireVenteMineur': prixUnitaireVenteMineur,
-        'prixUnitaireAchatMineur': prixUnitaireAchatMineur,
-        'conditionnementNom': conditionnementNom,
-        'quantiteEnUniteBase': quantiteEnUniteBase,
-      };
+    'produitId': produitId,
+    'nomProduit': nomProduit,
+    'quantite': quantite,
+    'prixUnitaireVente': prixUnitaireVente,
+    'prixUnitaireAchat': prixUnitaireAchat,
+    'prixUnitaireVenteMineur': prixUnitaireVenteMineur,
+    'prixUnitaireAchatMineur': prixUnitaireAchatMineur,
+    'conditionnementNom': conditionnementNom,
+    'quantiteEnUniteBase': quantiteEnUniteBase,
+    'conditionnementId': conditionnementId,
+  };
 
   factory ItemVendu.depuisJson(Map<String, dynamic> json) => ItemVendu(
-        produitId: json['produitId'] as String,
-        nomProduit: json['nomProduit'] as String,
-        quantite: json['quantite'] as int,
-        prixUnitaireVente: (json['prixUnitaireVente'] as num).toDouble(),
-        prixUnitaireAchat: (json['prixUnitaireAchat'] as num).toDouble(),
-        prixUnitaireVenteMineur: json['prixUnitaireVenteMineur'] as int? ?? 0,
-        prixUnitaireAchatMineur: json['prixUnitaireAchatMineur'] as int? ?? 0,
-        conditionnementNom: json['conditionnementNom'] as String? ?? '',
-        quantiteEnUniteBase: json['quantiteEnUniteBase'] as int? ?? 1,
-      );
+    produitId: json['produitId'] as String,
+    nomProduit: json['nomProduit'] as String,
+    quantite: json['quantite'] as int,
+    prixUnitaireVente: (json['prixUnitaireVente'] as num).toDouble(),
+    prixUnitaireAchat: (json['prixUnitaireAchat'] as num).toDouble(),
+    prixUnitaireVenteMineur: json['prixUnitaireVenteMineur'] as int? ?? 0,
+    prixUnitaireAchatMineur: json['prixUnitaireAchatMineur'] as int? ?? 0,
+    conditionnementNom: json['conditionnementNom'] as String? ?? '',
+    quantiteEnUniteBase: json['quantiteEnUniteBase'] as int? ?? 1,
+    conditionnementId: json['conditionnementId'] as String? ?? '',
+  );
 }

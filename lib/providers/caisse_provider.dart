@@ -16,8 +16,7 @@ class CaisseProvider extends ChangeNotifier {
   final List<ItemVendu> _panier = [];
   List<ItemVendu> get panier => List.unmodifiable(_panier);
 
-  double get totalPanier =>
-      _panier.fold<double>(0, (s, i) => s + i.sousTotal);
+  double get totalPanier => _panier.fold<double>(0, (s, i) => s + i.sousTotal);
 
   double get margeBrutePanier =>
       _panier.fold<double>(0, (s, i) => s + i.margeBrute);
@@ -52,28 +51,63 @@ class CaisseProvider extends ChangeNotifier {
   /// unité de base. Deux lignes du même produit mais de conditionnements
   /// différents (ex: 2 casiers puis 3 bouteilles du même Coca) restent
   /// distinctes dans le panier.
+  ///
+  /// Clé de fusion (mission I1) : le nom seul ne suffit pas, car deux
+  /// conditionnements distincts peuvent s'appeler « Casier » (12 ou 24
+  /// unités). Une ligne n'est cumulée que si le produit, l'identifiant du
+  /// conditionnement (non vide), la quantité en unité de base ET le prix
+  /// unitaire sont identiques. Pour les lignes historiques sans identifiant
+  /// ([ItemVendu.conditionnementId] vide des deux côtés), on retombe sur le
+  /// comportement d'avant : même nom, même quantité et même prix.
   void ajouterAuPanier(
     Produit produit,
     Conditionnement conditionnement, {
     int quantite = 1,
   }) {
-    final indexExistant = _panier.indexWhere((i) =>
-        i.produitId == produit.id &&
-        i.conditionnementNom == conditionnement.nom);
+    final indexExistant = _panier.indexWhere(
+      (i) => _memeLigneDePanier(i, produit, conditionnement),
+    );
     if (indexExistant != -1) {
       _panier[indexExistant].quantite += quantite;
     } else {
-      _panier.add(ItemVendu(
-        produitId: produit.id,
-        nomProduit: produit.nom,
-        quantite: quantite,
-        prixUnitaireVente: conditionnement.prixVente,
-        prixUnitaireAchat: produit.prixAchat * conditionnement.quantiteEnUniteBase,
-        conditionnementNom: conditionnement.nom,
-        quantiteEnUniteBase: conditionnement.quantiteEnUniteBase,
-      ));
+      _panier.add(
+        ItemVendu(
+          produitId: produit.id,
+          nomProduit: produit.nom,
+          quantite: quantite,
+          prixUnitaireVente: conditionnement.prixVente,
+          prixUnitaireAchat:
+              produit.prixAchat * conditionnement.quantiteEnUniteBase,
+          conditionnementNom: conditionnement.nom,
+          quantiteEnUniteBase: conditionnement.quantiteEnUniteBase,
+          conditionnementId: conditionnement.id,
+        ),
+      );
     }
     notifyListeners();
+  }
+
+  bool _memeLigneDePanier(
+    ItemVendu ligne,
+    Produit produit,
+    Conditionnement conditionnement,
+  ) {
+    if (ligne.produitId != produit.id) return false;
+    if (ligne.quantiteEnUniteBase != conditionnement.quantiteEnUniteBase) {
+      return false;
+    }
+    if (ligne.prixUnitaireVente != conditionnement.prixVente) return false;
+
+    // Ligne actuelle avec identifiant : seule une ligne portant le MÊME
+    // identifiant peut fusionner (jamais un simple nom homonyme).
+    if (conditionnement.id.isNotEmpty) {
+      return ligne.conditionnementId.isNotEmpty &&
+          ligne.conditionnementId == conditionnement.id;
+    }
+
+    // Repli historique : ni l'une ni l'autre n'a d'identifiant.
+    return ligne.conditionnementId.isEmpty &&
+        ligne.conditionnementNom == conditionnement.nom;
   }
 
   void modifierQuantite(int index, int quantite) {
