@@ -173,6 +173,133 @@ void main() {
     await HiveService.parametresBox.put(ParametresKeys.paysCode, 'CI');
   }
 
+  /// Données représentatives des anciennes sémantiques I1/I2 : doublons de
+  /// noms de conditionnement, prix de produit contenant le prix d'un
+  /// conditionnement, conditionnement dont le pendant mineur vaut 0.
+  Future<void> grainerDonneesAnciennes() async {
+    await HiveService.produitsBox.putAll({
+      'p-casier': Produit(
+        id: 'p-casier',
+        nom: 'Coca',
+        prixAchat: 100,
+        prixVente: 2000,
+        prixVenteMineur: 2000,
+        stockActuel: 100,
+        devise: 'XOF',
+        uniteBase: 'bouteille',
+        dateCreation: DateTime(2026, 1, 5),
+      ),
+      'p-division': Produit(
+        id: 'p-division',
+        nom: 'Eau',
+        prixAchat: 50,
+        prixVente: 2000,
+        prixVenteMineur: 2000,
+        stockActuel: 100,
+        devise: 'XOF',
+        dateCreation: DateTime(2026, 1, 5),
+      ),
+      'p-simple': Produit(
+        id: 'p-simple',
+        nom: 'Savon',
+        prixAchat: 100,
+        prixVente: 500,
+        prixVenteMineur: 500,
+        stockActuel: 10,
+        devise: 'XOF',
+        dateCreation: DateTime(2026, 1, 5),
+      ),
+      'p-zero-mineur': Produit(
+        id: 'p-zero-mineur',
+        nom: 'Sucre',
+        prixAchat: 80,
+        prixVente: 1000,
+        prixVenteMineur: 1000,
+        stockActuel: 50,
+        devise: 'XOF',
+        dateCreation: DateTime(2026, 1, 5),
+      ),
+    });
+
+    await HiveService.conditionnementsBox.putAll({
+      'c-casier-2': Conditionnement(
+        id: 'c-casier-2',
+        produitId: 'p-casier',
+        nom: 'Casier',
+        quantiteEnUniteBase: 1,
+        prixVente: 150,
+        parDefaut: true,
+        devise: 'XOF',
+      ),
+      'c-casier-1': Conditionnement(
+        id: 'c-casier-1',
+        produitId: 'p-casier',
+        nom: 'casier',
+        quantiteEnUniteBase: 12,
+        prixVente: 1200,
+        parDefaut: false,
+        devise: 'XOF',
+      ),
+      'c-casier-3': Conditionnement(
+        id: 'c-casier-3',
+        produitId: 'p-casier',
+        nom: ' CASIER ',
+        quantiteEnUniteBase: 20,
+        prixVente: 2000,
+        parDefaut: false,
+        devise: 'XOF',
+      ),
+      'c-division': Conditionnement(
+        id: 'c-division',
+        produitId: 'p-division',
+        nom: 'Casier',
+        quantiteEnUniteBase: 20,
+        prixVente: 2000,
+        parDefaut: true,
+        devise: 'XOF',
+      ),
+      'c-pack': Conditionnement(
+        id: 'c-pack',
+        produitId: 'p-zero-mineur',
+        nom: 'Pack',
+        quantiteEnUniteBase: 10,
+        prixVente: 1000,
+        parDefaut: true,
+        devise: 'XOF',
+        prixVenteMineur: 0, // doit être réparé par la migration
+      ),
+    });
+  }
+
+  /// Relecture depuis le disque des seuls champs touchés par la migration
+  /// 1→2 (version, journal, prix des produits, noms et pendants mineurs des
+  /// conditionnements).
+  Future<Map<String, Object?>> etatMigrationSurDisque() async {
+    await Hive.close();
+    final parametres = await Hive.openBox(HiveBoxes.parametres);
+    final produits = await Hive.openBox<Produit>(HiveBoxes.produits);
+    final conditionnements = await Hive.openBox<Conditionnement>(
+      HiveBoxes.conditionnements,
+    );
+
+    final journal = parametres.get(ParametresKeys.migrationHiveEnCours);
+    return {
+      'schemaVersion': parametres.get(ParametresKeys.schemaVersion) as int?,
+      'journalEtat': journal is Map
+          ? journal[ChampsJournalMigration.etat] as String?
+          : null,
+      'produits': {
+        for (final p in produits.values)
+          p.id: '${p.prixVente}/${p.prixVenteMineur}',
+      },
+      'conditionnements': {
+        for (final c in conditionnements.values)
+          c.id:
+              '${c.produitId}/${c.nom}/${c.quantiteEnUniteBase}/${c.prixVenteMineur}',
+      },
+    };
+  }
+
   /// Ferme TOUT, rouvre chaque box fraîchement (lecture réelle des
   /// fichiers sur disque) et retourne un instantané textuel du contenu :
   /// clés, identifiants et champs sensibles (prix en unités mineures,
@@ -210,7 +337,7 @@ void main() {
       'produits': {
         for (final p in produits.values)
           p.id:
-              '${p.nom}/${p.stockActuel}/${p.prixAchatMineur}/${p.uniteBase}/${p.synchronise}',
+              '${p.nom}/${p.stockActuel}/${p.prixAchatMineur}/${p.prixVenteMineur}/${p.uniteBase}/${p.synchronise}',
       },
       'transactions': {
         for (final t in transactions.values)
@@ -384,22 +511,65 @@ void main() {
     expect(Directory(repertoireSauvegardes()).existsSync(), isFalse);
   });
 
-  test('3. anciennes données sans schema_version : version adoptée, aucune '
-      'suppression de données', () async {
+  test('3. base pré-C3 non vide sans schema_version (Option B) : la migration '
+      '1→2 s\'exécute, p-1 est normalisé (prix), aucune suppression', () async {
     await premierDemarrage();
     await grainerDonnees();
-    // Simuler une base créée avant l'introduction du versionnement.
+    // Simuler une base créée avant l'introduction du versionnement :
+    // p-1 porte l'ANCIEN prix (celui du casier de 20, 1500) au lieu du
+    // prix d'une unité de base (75).
+    final produits = HiveService.produitsBox;
+    final coca = produits.get('p-1')!;
+    coca.nom = '  Coca   ';
+    coca.prixVente = 1500;
+    coca.prixVenteMineur = 1500;
+    await produits.put('p-1', coca);
     await HiveService.parametresBox.delete(ParametresKeys.schemaVersion);
-    final journalAvant = await etatCompletSurDisque();
-    expect(journalAvant['schemaVersion'], isNull);
+
+    final avant = await etatCompletSurDisque();
+    expect(avant['schemaVersion'], isNull);
+    expect(
+      (avant['produits'] as Map<String, String>)['p-1'],
+      '  Coca   /100/75/1500/bouteille/false',
+    );
 
     await redemarrage();
 
     final apres = await etatCompletSurDisque();
     expect(apres['schemaVersion'], HiveService.schemaVersion);
     expect(apres['journalEtat'], isNull);
+
+    // Option B : la migration a bien été exécutée (sauvegarde brute
+    // 1→2 créée AVANT l'écriture), au lieu d'une simple adoption de
+    // version qui laisserait p-1 intact.
+    final sauvegardes = Directory(repertoireSauvegardes());
+    expect(sauvegardes.existsSync(), isTrue);
+    final dossiers = sauvegardes.listSync().whereType<Directory>().toList();
+    expect(dossiers, hasLength(1));
+    final manifeste =
+        jsonDecode(
+              File(
+                '${dossiers.single.path}/$nomFichierManifeste',
+              ).readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    expect(manifeste['versionSource'], 1);
+    expect(manifeste['versionCible'], 2);
+
+    // p-1 normalisé : prix ramené à 1500 / 20 = 75, nom inchangé
+    // (aucun nettoyage de nom de produit n'est demandé par B2).
+    final produitsAvant = avant['produits'] as Map<String, String>;
+    final produitsApres = apres['produits'] as Map<String, String>;
+    expect(produitsApres.keys, produitsAvant.keys);
+    expect(
+      produitsApres['p-1'],
+      '  Coca   /100/75/75/bouteille/false',
+      reason: 'Prix de l\'unité de base (1500 / 20), nom inchangé.',
+    );
+
+    // Aucune suppression : toutes les autres boxes sont identiques et
+    // tous les identifiants attendus sont toujours présents.
     for (final boite in [
-      'produits',
       'transactions',
       'dettes',
       'devises',
@@ -408,9 +578,15 @@ void main() {
       'conditionnements',
       'conflits',
     ]) {
-      expect(apres[boite], journalAvant[boite], reason: 'Box $boite');
+      expect(apres[boite], avant[boite], reason: 'Box $boite');
     }
-    expect(Directory(repertoireSauvegardes()).existsSync(), isFalse);
+    expect((apres['transactions'] as Map).keys, contains('t-1'));
+    expect((apres['dettes'] as Map).keys, contains('d-1'));
+    expect((apres['devises'] as Map).keys, contains('dv-XOF'));
+    expect((apres['paiementsDette'] as Map).keys, contains('pd-1'));
+    expect((apres['depenses'] as Map).keys, contains('e-1'));
+    expect((apres['conditionnements'] as Map).keys, contains('c-1'));
+    expect((apres['conflits'] as Map).keys, contains('cf-1'));
   });
 
   test(
@@ -423,7 +599,7 @@ void main() {
       await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 3);
       final avant = await etatCompletSurDisque();
 
-      final e = await redemarrageQuiEchoue(); // code actuel = 1 < 3
+      final e = await redemarrageQuiEchoue(); // code actuel = 2 < 3
       expect(e, isA<SchemaHivePlusRecentException>());
       final message = e.toString();
       expect(message, contains('PLUS RÉCENT'));
@@ -441,6 +617,9 @@ void main() {
       'succès', () async {
     await premierDemarrage();
     await grainerDonnees();
+    // Simuler une base au schéma 1 pour déclencher la migration 1→2
+    // personnalisée de ce test (la version courante du code est 2).
+    await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
     final nomDossier = RegExp(r'^v1_vers_v2_\d+$');
 
     var etapeFaite = false;
@@ -538,6 +717,7 @@ void main() {
     () async {
       await premierDemarrage();
       await grainerDonnees();
+      await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
       final avant = await etatCompletSurDisque();
 
       Object e;
@@ -594,6 +774,9 @@ void main() {
     () async {
       await premierDemarrage();
       await grainerDonnees();
+      // La sauvegarde doit capturer l'état d'avant migration, donc la
+      // version 1 (la version courante du code est désormais 2).
+      await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
       final dossier = await preparerMigrationInterrompue('v1_vers_v2_crash');
 
       // Arrêt brutal « après la sauvegarde, pendant les étapes » : ajouter
@@ -718,6 +901,9 @@ void main() {
       'au cours d\'une migration 1→2 complète', () async {
     await premierDemarrage();
     await grainerDonnees();
+    // Simuler une base au schéma 1 : la migration 1→2 personnalisée de ce
+    // test doit réellement s'exécuter (version courante du code = 2).
+    await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
     final avant = await etatCompletSurDisque();
 
     await redemarrage(
@@ -916,31 +1102,111 @@ void main() {
     expect(Directory(dossier).existsSync(), isTrue);
   });
 
+  test('16. migration réelle 1→2 : doublons de noms renommés de façon '
+      'déterministe et prix du produit recalculé en unité de base, relus '
+      'depuis le disque', () async {
+    await premierDemarrage();
+    await grainerDonneesAnciennes();
+
+    // Simule une base réellement au schéma 1.
+    await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
+
+    await redemarrage(); // migrationsHive de production : 1→2
+
+    final etat = await etatMigrationSurDisque();
+    expect(etat['schemaVersion'], 2);
+    expect(etat['journalEtat'], isNull);
+
+    final produits = etat['produits'] as Map<String, String>;
+    final conditionnements = etat['conditionnements'] as Map<String, String>;
+
+    // Prix d'UNE unité de base.
+    expect(produits['p-casier'], '150.0/150'); // format quantité 1 prioritaire
+    expect(produits['p-division'], '100.0/100'); // 2000 / 20
+    expect(produits['p-simple'], '500.0/500'); // aucun conditionnement : intact
+    expect(produits['p-zero-mineur'], '100.0/100'); // pendant mineur réparé
+
+    // Noms uniques après normalisation, ids inchangés.
+    expect(conditionnements['c-casier-2'], 'p-casier/Casier/1/150');
+    expect(conditionnements['c-casier-1'], 'p-casier/Casier (2)/12/1200');
+    expect(conditionnements['c-casier-3'], 'p-casier/Casier (3)/20/2000');
+    expect(conditionnements['c-division'], 'p-division/Casier/20/2000');
+    expect(conditionnements['c-pack'], 'p-zero-mineur/Pack/10/1000');
+
+    // Aucun conditionnement créé pour le produit qui n'en avait pas.
+    expect(
+      conditionnements.values.where((v) => v.startsWith('p-simple/')),
+      isEmpty,
+    );
+
+    // La migration réelle a bien bénéficié de la sauvegarde brute C3.
+    final dossiers = Directory(
+      repertoireSauvegardes(),
+    ).listSync().whereType<Directory>().toList();
+    expect(dossiers, hasLength(1));
+    final manifeste =
+        jsonDecode(
+              File(
+                '${dossiers.single.path}/$nomFichierManifeste',
+              ).readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    expect(manifeste['versionSource'], 1);
+    expect(manifeste['versionCible'], 2);
+  });
+
+  test('17. migration 1→2 idempotente : une seconde exécution sur les '
+      'données déjà normalisées ne change ni les noms ni les prix', () async {
+    await premierDemarrage();
+    await grainerDonneesAnciennes();
+    await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
+    await redemarrage();
+
+    final premier = await etatMigrationSurDisque();
+
+    // Rejoue la même migration sur l'état déjà normalisé.
+    await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
+    await redemarrage();
+
+    final second = await etatMigrationSurDisque();
+
+    expect(second['produits'], premier['produits']);
+    expect(second['conditionnements'], premier['conditionnements']);
+  });
+
   test(
     'B. bump de version sans migration enregistrée : démarrage refusé '
     'explicitement, aucune donnée effacée (ancien comportement destructif)',
     () async {
       await premierDemarrage();
       await grainerDonnees();
-      final avant = await etatCompletSurDisque();
 
-      final e = await redemarrageQuiEchoue(versionCible: 2); // registre vide
+      // Simule une base au schéma 1, avec un registre volontairement vide.
+      await HiveService.parametresBox.put(ParametresKeys.schemaVersion, 1);
+      final avant = await etatCompletSurDisque();
+      expect(avant['schemaVersion'], 1);
+
+      final e = await redemarrageQuiEchoue(
+        migrations: const <HiveMigration>[],
+        versionCible: 2,
+      );
       expect(e, isA<MigrationHiveManquanteException>());
       expect(e.toString(), contains('aucune migration'));
       expect(e.toString(), contains('Aucune donnée'));
 
       final apres = await etatCompletSurDisque();
-      expect(apres['schemaVersion'], HiveService.schemaVersion);
+      expect(apres['schemaVersion'], 1); // version conservée
       expect(apres, equals(avant));
     },
   );
 
   test('A. aucun appel destructif à Hive.deleteBoxFromDisk dans le '
-      "mécanisme de versionnement", () {
+      "mécanisme de versionnement, et migration 1→2 enregistrée", () {
     final service = File('lib/services/hive_service.dart').readAsStringSync();
     final migrations = File(
       'lib/services/hive_migrations.dart',
     ).readAsStringSync();
+
     expect(
       service,
       isNot(contains('deleteBoxFromDisk')),
@@ -951,8 +1217,13 @@ void main() {
       isNot(contains('deleteBoxFromDisk')),
       reason: 'Le mécanisme de migration ne doit jamais contenir ce mot.',
     );
+
     // Le filet de sécurité structurel est en place.
-    expect(migrationsHive, isEmpty);
-    expect(HiveService.schemaVersion, 1);
+    expect(HiveService.schemaVersion, 2);
+    final migrationV1VersV2 = migrationsHive
+        .where((m) => m.versionDe == 1 && m.versionVers == 2)
+        .toList();
+    expect(migrationV1VersV2, hasLength(1));
+    expect(migrationV1VersV2.single.nom, isNotEmpty);
   });
 }

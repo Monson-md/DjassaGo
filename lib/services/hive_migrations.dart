@@ -24,6 +24,11 @@ import 'package:crypto/crypto.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../config/hive_boxes.dart';
+import '../models/conditionnement.dart';
+import '../models/produit.dart';
+import 'normalisation_produits_conditionnements.dart';
+
 /// Une migration de schéma Hive, du schéma [versionDe] vers [versionVers].
 ///
 /// Règles pour toute migration future :
@@ -53,17 +58,59 @@ class HiveMigration {
   });
 }
 
-/// Registre ordonné des migrations de schéma.
+/// Registre ordonné des migrations de schéma et de données.
 ///
-/// VOLONTAIREMENT VIDE : l'audit C3 a montré que chaque changement de
-/// modèle jusqu'ici (champs en unités mineures, margeBrute, deviceId,
-/// conditionnements) est rétrocompatible (champs ajoutés avec
-/// `defaultValue`), donc aucune migration 1→2 n'existe. Toute future
-/// migration doit être déclarée ICI, explicitement, avant tout
-/// incrément de `HiveService.schemaVersion` — sinon le démarrage est
-/// refusé avec [MigrationHiveManquanteException] plutôt que de détruire
-/// les données (règle qui remplace l'ancienne routine d'effacement).
-const List<HiveMigration> migrationsHive = [];
+/// Chaque migration doit être déclarée ICI, explicitement, avant tout
+/// incrément de [HiveService.schemaVersion] — sinon le démarrage est refusé
+/// avec [MigrationHiveManquanteException] plutôt que de détruire les
+/// données.
+///
+/// Migration 1→2 (mission B2) : normalise les données écrites avant les
+/// corrections I1/I2 — noms de conditionnement uniques par produit et
+/// [Produit.prixVente]/[Produit.prixVenteMineur] ramenés au prix d'UNE
+/// unité de base. Elle ne supprime aucun enregistrement et ne change aucun
+/// identifiant.
+const List<HiveMigration> migrationsHive = [
+  HiveMigration(
+    versionDe: 1,
+    versionVers: 2,
+    nom: 'normaliser_conditionnements_et_prix_unite_base',
+    executer: _migrerV1VersV2,
+  ),
+];
+
+/// Migration 1→2 : renommage déterministe des doublons de noms de
+/// conditionnement, puis recalcul du prix de vente de chaque produit à
+/// partir de ses conditionnements renommés.
+///
+/// Idempotente : relancée sur des données déjà normalisées, elle produit
+/// exactement le même résultat.
+Future<void> _migrerV1VersV2() async {
+  final produitsBox = Hive.box<Produit>(HiveBoxes.produits);
+  final conditionnementsBox = Hive.box<Conditionnement>(
+    HiveBoxes.conditionnements,
+  );
+
+  final resultat = normaliserProduitsEtConditionnements(
+    produits: produitsBox.values.toList(),
+    conditionnements: conditionnementsBox.values.toList(),
+  );
+
+  // Les conditionnements d'abord (noms uniques), puis les produits dont le
+  // prix est recalculé à partir de ces conditionnements renommés.
+  for (final conditionnement in resultat.conditionnements) {
+    await conditionnementsBox.put(conditionnement.id, conditionnement);
+  }
+
+  final idsAvecConditionnements = {
+    for (final conditionnement in resultat.conditionnements)
+      conditionnement.produitId,
+  };
+  for (final produit in resultat.produits) {
+    if (!idsAvecConditionnements.contains(produit.id)) continue;
+    await produitsBox.put(produit.id, produit);
+  }
+}
 
 /// Clés de la map-journal stockée dans `parametres_box` sous la clé
 /// `migration_hive_en_cours` (ParametresKeys.migrationHiveEnCours) pendant

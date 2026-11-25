@@ -119,15 +119,17 @@ Map<String, dynamic> _conditionnementJson(
   String nom = 'Unité',
   int quantite = 1,
   double prixVente = 700,
+  bool parDefaut = true,
+  int? prixVenteMineur,
 }) => {
   'id': id,
   'produitId': produitId,
   'nom': nom,
   'quantiteEnUniteBase': quantite,
   'prixVente': prixVente,
-  'parDefaut': true,
+  'parDefaut': parDefaut,
   'devise': 'XOF',
-  'prixVenteMineur': prixVente.toInt(),
+  'prixVenteMineur': prixVenteMineur ?? prixVente.toInt(),
   'deviceId': '',
   'lastModified': null,
 };
@@ -893,5 +895,141 @@ void main() {
     final paiement = HiveService.paiementsDetteBox.get('pm-local');
     expect(paiement, isNotNull);
     expect(paiement!.detteId, 'dette-locale');
+  });
+
+  test("import d'une sauvegarde v2 APRÈS migration : noms dupliqués "
+      "renommés et prix du produit recalculé en prix d'unité de base, "
+      'relus depuis le disque', () async {
+    final backup = BackupService();
+    final fichier = await _ecrireSauvegarde(
+      tempDir,
+      _sauvegardeJson(
+        version: 2,
+        produits: [_produitJson('p-coca', nom: 'Coca', prixVente: 2000)],
+        conditionnements: [
+          _conditionnementJson(
+            'c-casier',
+            'p-coca',
+            nom: 'Casier',
+            quantite: 20,
+            prixVente: 2000,
+            parDefaut: true,
+          ),
+          _conditionnementJson(
+            'c-bouteille',
+            'p-coca',
+            nom: 'casier',
+            quantite: 1,
+            prixVente: 150,
+            parDefaut: false,
+          ),
+        ],
+      ),
+      nom: 'v2_apres_migration.json',
+    );
+
+    await backup.restaurer(fichier, remplacer: true);
+    await rouvrirBoxesDepuisDisque();
+
+    final produit = HiveService.produitsBox.get('p-coca')!;
+    expect(produit.prixVenteMineur, 150);
+    expect(produit.prixVente, 150);
+
+    final conditionnements = ConditionnementService().listerPour('p-coca');
+    expect(conditionnements, hasLength(2));
+    expect(conditionnements.map((c) => c.id).toSet(), {
+      'c-casier',
+      'c-bouteille',
+    }, reason: 'Les identifiants ne changent jamais.');
+    // Tri : par défaut d'abord, puis quantité. c-casier garde « Casier » ;
+    // c-bouteille devient « Casier (2) ».
+    expect(conditionnements.map((c) => c.nom).toSet(), {
+      'Casier',
+      'Casier (2)',
+    });
+  });
+
+  test("import d'une sauvegarde v1 après migration : prix d'unité déjà "
+      'correct, conditionnement de quantité 1 créé au prix importé', () async {
+    final backup = BackupService();
+    final fichier = await _ecrireSauvegarde(
+      tempDir,
+      _sauvegardeJson(
+        version: 1,
+        produits: [_produitJson('p-savon', nom: 'Savon', prixVente: 500)],
+      ),
+      nom: 'v1_apres_migration.json',
+    );
+
+    await backup.restaurer(fichier, remplacer: true);
+    await rouvrirBoxesDepuisDisque();
+
+    final produit = HiveService.produitsBox.get('p-savon')!;
+    expect(produit.prixVenteMineur, 500);
+    expect(produit.prixVente, 500);
+
+    final conditionnements = ConditionnementService().listerPour('p-savon');
+    expect(conditionnements, hasLength(1));
+    expect(conditionnements.single.quantiteEnUniteBase, 1);
+    expect(conditionnements.single.prixVente, 500);
+  });
+
+  test("import v2 avec prixVenteMineur resté à 0 : le pendant mineur est "
+      'réparé et le prix produit divisé par la quantité', () async {
+    final backup = BackupService();
+    final fichier = await _ecrireSauvegarde(
+      tempDir,
+      _sauvegardeJson(
+        version: 2,
+        produits: [_produitJson('p-eau', nom: 'Eau', prixVente: 2000)],
+        conditionnements: [
+          _conditionnementJson(
+            'c-pack',
+            'p-eau',
+            nom: 'Pack',
+            quantite: 20,
+            prixVente: 2000,
+            prixVenteMineur: 0,
+          ),
+        ],
+      ),
+      nom: 'v2_prix_mineur_zero.json',
+    );
+
+    await backup.restaurer(fichier, remplacer: true);
+    await rouvrirBoxesDepuisDisque();
+
+    final produit = HiveService.produitsBox.get('p-eau')!;
+    expect(produit.prixVenteMineur, 100);
+    final conditionnement = HiveService.conditionnementsBox.get('c-pack')!;
+    expect(conditionnement.prixVenteMineur, 2000);
+  });
+
+  test("une sauvegarde v3 n'est pas renormalisée : les données du format "
+      'courant sont écrites telles quelles', () async {
+    final backup = BackupService();
+    final fichier = await _ecrireSauvegarde(
+      tempDir,
+      _sauvegardeJson(
+        version: BackupService.formatVersion,
+        produits: [_produitJson('p-v3', nom: 'V3', prixVente: 999)],
+        conditionnements: [
+          _conditionnementJson(
+            'c-v3',
+            'p-v3',
+            nom: 'Casier',
+            quantite: 20,
+            prixVente: 2000,
+          ),
+        ],
+      ),
+      nom: 'v3.json',
+    );
+
+    await backup.restaurer(fichier, remplacer: true);
+    await rouvrirBoxesDepuisDisque();
+
+    expect(HiveService.produitsBox.get('p-v3')!.prixVenteMineur, 999);
+    expect(HiveService.conditionnementsBox.get('c-v3')!.nom, 'Casier');
   });
 }

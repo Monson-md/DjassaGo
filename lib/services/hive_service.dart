@@ -23,8 +23,9 @@ import 'hive_migrations.dart';
 ///
 /// [schemaVersion] est comparé à la valeur stockée à chaque démarrage :
 /// - identique → ouverture normale ;
-/// - absente → installation neuve ou base pré-version : adopter la
-///   version courante SANS supprimer aucune donnée ;
+/// - absente → installation neuve : adopter la version courante ; base
+///   pré-C3 non vide : exécuter la chaîne de migrations depuis la version
+///   1 (voir [_uneBoxMetierEstNonVide]) SANS supprimer aucune donnée ;
 /// - inférieure → exécuter les migrations enregistrées
 ///   ([migrationsHive], voir hive_migrations.dart), après une sauvegarde
 ///   brute des fichiers `.hive` et une écriture au journal de migration
@@ -48,7 +49,7 @@ class HiveService {
   /// sinon le démarrage est refusé ([MigrationHiveManquanteException])
   /// au lieu d'effacer les données, comme l'ancien code le faisait.
   /// Voir ParametresKeys.schemaVersion et hive_migrations.dart.
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   static Future<void> init() => initialiser();
 
@@ -97,13 +98,40 @@ class HiveService {
     final migrationsAUtiliser = migrations ?? migrationsHive;
 
     if (versionStockee == null) {
-      // Première installation, ou base créée avant l'introduction du
-      // versionnement : adopter la version courante sans effacer
-      // quoi que ce soit (les adaptateurs ont toujours été
-      // rétrocompatibles, voir le registre vide migrationsHive).
+      // Aucune version stockée : soit une installation neuve (boxes
+      // vides), soit une base créée avant l'introduction du versionnement
+      // (C3 n'a jamais été publiée sur main : TOUS les utilisateurs réels
+      // actuels sont dans ce second cas).
       await _ouvrirBoxesDonnees();
       _validerBoxesLisibles();
-      await parametresBox.put(ParametresKeys.schemaVersion, cible);
+
+      final baseContientDesDonnees = _uneBoxMetierEstNonVide();
+      if (baseContientDesDonnees && cible > 1) {
+        // Option B (obligatoire) : des données existent alors qu'aucune
+        // version n'a jamais été écrite. Sans cette branche, la migration
+        // 1→2 ne s'exécuterait jamais chez les utilisateurs réels. On
+        // repart de la version 1, avec la même protection (journal +
+        // sauvegarde brute + restauration) que toute migration.
+        //
+        // Repartir avec seulement parametres ouverte, comme le suppose
+        // _executerMigration / SauvegardeBruteHive.creer.
+        await Hive.close();
+        await Hive.openBox(HiveBoxes.parametres);
+
+        final chaine = _chaineMigrations(migrationsAUtiliser, 1, cible);
+        await _executerMigration(1, cible, chaine);
+        _validerBoxesLisibles();
+
+        final boiteParametres = Hive.box(HiveBoxes.parametres);
+        await boiteParametres.put(ParametresKeys.schemaVersion, cible);
+        await boiteParametres.delete(ParametresKeys.migrationHiveEnCours);
+      } else {
+        // Installation neuve (ou version cible 1) : adopter la version
+        // courante sans effacer quoi que ce soit.
+        await Hive.box(
+          HiveBoxes.parametres,
+        ).put(ParametresKeys.schemaVersion, cible);
+      }
     } else if (versionStockee > cible) {
       // Rétrogradation : refus explicite, aucune donnée touchée.
       throw SchemaHivePlusRecentException(
@@ -438,6 +466,24 @@ class HiveService {
       Hive.openBox<ConflitSynchronisation>(HiveBoxes.conflitsSynchronisation),
       Hive.openBox<Conditionnement>(HiveBoxes.conditionnements),
     ]);
+  }
+
+  /// Vrai dès qu'AU MOINS une box métier contient un enregistrement.
+  ///
+  /// Sert à distinguer une installation neuve (toutes les boxes vides,
+  /// simple adoption de la version) d'une base pré-C3 réelle (données
+  /// présentes sans `schemaVersion`), qui doit passer par la chaîne de
+  /// migrations depuis la version 1. À n'appeler qu'après
+  /// [_ouvrirBoxesDonnees].
+  static bool _uneBoxMetierEstNonVide() {
+    return HiveService.produitsBox.isNotEmpty ||
+        HiveService.transactionsBox.isNotEmpty ||
+        HiveService.dettesBox.isNotEmpty ||
+        HiveService.devisesBox.isNotEmpty ||
+        HiveService.paiementsDetteBox.isNotEmpty ||
+        HiveService.depensesBox.isNotEmpty ||
+        HiveService.conflitsSynchronisationBox.isNotEmpty ||
+        HiveService.conditionnementsBox.isNotEmpty;
   }
 
   /// Force la lecture complète de chaque box métier : si un schéma

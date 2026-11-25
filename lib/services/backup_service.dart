@@ -14,6 +14,7 @@ import '../models/produit.dart';
 import '../models/transaction.dart' as model;
 import 'conditionnement_service.dart';
 import 'hive_service.dart';
+import 'normalisation_produits_conditionnements.dart';
 
 /// Aperçu du contenu d'un fichier de sauvegarde, affiché avant
 /// restauration pour que le commerçant sache ce qu'il s'apprête à
@@ -149,12 +150,13 @@ class _SauvegardeValidee {
 /// en cas de perte du téléphone : sans ça, tout l'historique du
 /// commerçant disparaît avec l'appareil.
 class BackupService {
-  // Version 2 : ajout des conditionnements de vente (voir
-  // lib/models/conditionnement.dart). Une sauvegarde v1 reste importable :
-  // chaque produit sans conditionnement dans le fichier en reçoit
-  // automatiquement un, unique, de quantité 1 (voir
-  // ConditionnementService.migrerSiAbsent).
-  static const int formatVersion = 2;
+  // Version 3 : Produit.prixVente/prixVenteMineur portent désormais le prix
+  // d'UNE unité de base et les noms de conditionnement sont uniques par
+  // produit (missions I1/I2). Les fichiers v1 et v2 restent importables :
+  // leurs données sont normalisées en mémoire avant écriture avec les mêmes
+  // fonctions que la migration Hive 1→2, donc une base déjà migrée ne voit
+  // pas réapparaître d'anciens prix ni des doublons.
+  static const int formatVersion = 3;
   static const String _cleDerniereSauvegarde = 'derniere_sauvegarde_le';
 
   /// Dossier (dans le répertoire documents de l'app) qui reçoit un point
@@ -372,6 +374,36 @@ class BackupService {
     );
   }
 
+  /// Applique aux données d'un fichier ANTÉRIEUR au format 3 la même
+  /// normalisation que la migration Hive 1→2 : noms de conditionnement
+  /// uniques par produit et prix de vente du produit recalculé comme prix
+  /// d'une unité de base. Réutilise exactement les mêmes fonctions pures
+  /// (voir normalisation_produits_conditionnements.dart) : pas de seconde
+  /// logique à maintenir.
+  ///
+  /// Les fichiers v3 sont laissés tels quels : ils ont été produits par une
+  /// application déjà migrée.
+  _SauvegardeValidee _normaliserAncienFormat(_SauvegardeValidee validee) {
+    if (validee.version >= formatVersion) return validee;
+
+    final normalises = normaliserProduitsEtConditionnements(
+      produits: validee.produits,
+      conditionnements: validee.conditionnements,
+    );
+
+    return _SauvegardeValidee(
+      version: validee.version,
+      exporteLe: validee.exporteLe,
+      produits: normalises.produits,
+      transactions: validee.transactions,
+      dettes: validee.dettes,
+      paiementsDette: validee.paiementsDette,
+      depenses: validee.depenses,
+      conditionnements: normalises.conditionnements,
+      collectionsPresents: validee.collectionsPresents,
+    );
+  }
+
   /// Récupère une collection sous forme de liste. [obligatoire] : les
   /// trois collections d'origine (produits/transactions/dettes) doivent
   /// exister ; les collections ajoutées ensuite sont facultatives
@@ -512,9 +544,10 @@ class BackupService {
   /// restauration créé (au format export, contenant l'état d'avant
   /// import). Déroulé exact (mission C4) :
   ///
-  /// 1. validation COMPLÈTE en mémoire ([_validerContenu], puis
-  ///    [_verifierReferences]) — si le contenu est refusé, aucune
-  ///    écriture n'a eu lieu, la levée signale quoi corriger ;
+  /// 1. validation COMPLÈTE en mémoire ([_validerContenu]), puis
+  ///    normalisation des fichiers antérieurs au format 3 (mêmes règles
+  ///    que la migration Hive 1→2), puis [_verifierReferences] — si le
+  ///    contenu est refusé, aucune écriture n'a eu lieu ;
   /// 2. point de restauration durable sur disque
   ///    ([_creerPointRestauration]) — jamais de modification de
   ///    `derniere_sauvegarde_le`, jamais de suppression du dernier point ;
@@ -550,7 +583,11 @@ class BackupService {
     @visibleForTesting String? echecApresEtape,
   }) async {
     // 1) Validation entièrement en mémoire : rien n'est écrit avant.
-    final validee = await _validerContenu(fichier);
+    //    Un fichier antérieur au format 3 est normalisé ICI, en mémoire,
+    //    avec les mêmes règles que la migration Hive 1→2 : une base déjà
+    //    migrée ne doit pas voir réapparaître d'anciens prix ni des noms
+    //    de conditionnement dupliqués via une restauration.
+    final validee = _normaliserAncienFormat(await _validerContenu(fichier));
     _verifierReferences(validee, remplacer: remplacer);
 
     // 2) Point de restauration durable, avant la moindre écriture Hive.

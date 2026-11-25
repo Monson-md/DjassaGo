@@ -51,10 +51,10 @@ class Produit extends HiveObject {
   /// Prix de vente d'une unité de base, en unités mineures de la devise
   /// (voir lib/utils/money.dart) — pendant entier de [prixVente]. Source de
   /// vérité pour tout nouveau calcul, comme [prixAchatMineur]. Les
-  /// enregistrements historiques (avant la correction I2) peuvent encore
-  /// contenir le prix d'un conditionnement : aucune migration n'est faite
-  /// dans la mission B1, seules les nouvelles saisies et éditions sont
-  /// correctes.
+  /// enregistrements historiques (avant la correction I2) sont normalisés
+  /// par la migration Hive 1→2 (mission B2, voir
+  /// lib/services/hive_migrations.dart) et, pour les sauvegardes
+  /// antérieures au format 3, à l'import (BackupService).
   @HiveField(10, defaultValue: 0)
   int prixVenteMineur;
 
