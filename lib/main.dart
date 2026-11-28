@@ -14,11 +14,12 @@ import 'providers/pin_provider.dart';
 import 'providers/produit_provider.dart';
 import 'screens/accueil/accueil_screen.dart';
 import 'screens/accueil/onboarding_pays_screen.dart';
-import 'screens/verrouillage/pin_lock_screen.dart';
 import 'services/ad_service.dart';
 import 'services/diagnostic_service.dart';
 import 'services/hive_service.dart';
 import 'services/sync_service.dart';
+import 'widgets/gardien_retour.dart';
+import 'widgets/verrouillage_overlay.dart';
 
 /// Point d'entrée de l'application.
 ///
@@ -29,27 +30,34 @@ import 'services/sync_service.dart';
 /// échoue, un écran de diagnostic lisible s'affiche à la place de l'app —
 /// jamais un retour silencieux au launcher.
 void main() {
-  runZonedGuarded<void>(() {
-    WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded<void>(
+    () {
+      WidgetsFlutterBinding.ensureInitialized();
 
-    FlutterError.onError = (details) {
-      FlutterError.presentError(details);
-      DiagnosticService.ajouter(
-        'Flutter',
-        details.exceptionAsString(),
-        details.stack,
-      );
-    };
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        DiagnosticService.ajouter(
+          'Flutter',
+          details.exceptionAsString(),
+          details.stack,
+        );
+      };
 
-    PlatformDispatcher.instance.onError = (error, stack) {
-      DiagnosticService.ajouter('Uncaught (PlatformDispatcher)', '$error', stack);
-      return true;
-    };
+      PlatformDispatcher.instance.onError = (error, stack) {
+        DiagnosticService.ajouter(
+          'Uncaught (PlatformDispatcher)',
+          '$error',
+          stack,
+        );
+        return true;
+      };
 
-    runApp(const _AppRacine());
-  }, (error, stack) {
-    DiagnosticService.ajouter('Uncaught (Zone)', '$error', stack);
-  });
+      runApp(const _AppRacine());
+    },
+    (error, stack) {
+      DiagnosticService.ajouter('Uncaught (Zone)', '$error', stack);
+    },
+  );
 }
 
 /// Racine réelle de l'application : affiche un état de chargement
@@ -98,7 +106,9 @@ class _AppRacineState extends State<_AppRacine> {
     // CHECKLIST.md : Firebase et Google Mobile Ads ont été retirés du
     // projet), mais la structure est conservée pour qu'une vraie
     // implémentation puisse être réintroduite sans changer ce fichier.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initialiserEnArrierePlan());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _initialiserEnArrierePlan(),
+    );
   }
 
   Future<void> _initialiserEnArrierePlan() async {
@@ -232,8 +242,33 @@ class _EcranDiagnostic extends StatelessWidget {
   }
 }
 
-class CaisseDePocheApp extends StatelessWidget {
-  const CaisseDePocheApp({super.key});
+class CaisseDePocheApp extends StatefulWidget {
+  const CaisseDePocheApp({super.key, this.pinProvider});
+
+  /// Injectable pour les tests : permet de fournir un `PinProvider` adossé à
+  /// un faux stockage sécurisé sans dépendre du canal natif.
+  final PinProvider? pinProvider;
+
+  @override
+  State<CaisseDePocheApp> createState() => _CaisseDePocheAppState();
+}
+
+class _CaisseDePocheAppState extends State<CaisseDePocheApp> {
+  late final PinProvider _pin;
+  late final bool _pinCree;
+
+  @override
+  void initState() {
+    super.initState();
+    _pinCree = widget.pinProvider == null;
+    _pin = widget.pinProvider ?? PinProvider();
+  }
+
+  @override
+  void dispose() {
+    if (_pinCree) _pin.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -244,62 +279,42 @@ class CaisseDePocheApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ConditionnementProvider()),
         ChangeNotifierProvider(create: (_) => CaisseProvider()),
         ChangeNotifierProvider(create: (_) => DetteProvider()),
-        ChangeNotifierProvider(create: (_) => PinProvider()),
+        ChangeNotifierProvider<PinProvider>.value(value: _pin),
         ChangeNotifierProvider(create: (_) => DepenseProvider()),
       ],
-      child: MaterialApp(
-        title: 'Caisse de Poche',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorSchemeSeed: Colors.teal,
-          useMaterial3: true,
-          navigationBarTheme: const NavigationBarThemeData(
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      child: GardienRetour(
+        pin: _pin,
+        child: MaterialApp(
+          title: 'Caisse de Poche',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorSchemeSeed: Colors.teal,
+            useMaterial3: true,
+            navigationBarTheme: const NavigationBarThemeData(
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            ),
           ),
+          builder: (context, child) =>
+              VerrouillageOverlay(child: child ?? const SizedBox.shrink()),
+          home: const _EcranDemarrage(),
         ),
-        home: const _EcranDemarrage(),
       ),
     );
   }
 }
 
 /// Redirige vers l'onboarding pays/devise si c'est le premier lancement,
-/// sinon vers l'écran de verrouillage (si un code PIN est configuré) puis
-/// l'écran d'accueil. Reverrouille l'application dès qu'elle repasse en
-/// arrière-plan — le téléphone passe entre les mains des vendeurs et des
-/// clients (voir Phase 5 de docs/PHASES.md).
-class _EcranDemarrage extends StatefulWidget {
+/// sinon vers l'accueil. Le verrouillage est un voile affiché au-dessus du
+/// Navigator (voir `VerrouillageOverlay`) : l'accueil reste monté même
+/// lorsque le voile est actif, pour ne pas perdre l'état des écrans.
+class _EcranDemarrage extends StatelessWidget {
   const _EcranDemarrage();
 
   @override
-  State<_EcranDemarrage> createState() => _EcranDemarrageState();
-}
-
-class _EcranDemarrageState extends State<_EcranDemarrage>
-    with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      context.read<PinProvider>().verrouiller();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final premierLancementTermine =
-        context.watch<CurrencyProvider>().premierLancementTermine;
+    final premierLancementTermine = context
+        .watch<CurrencyProvider>()
+        .premierLancementTermine;
     if (!premierLancementTermine) {
       return const OnboardingPaysScreen();
     }
@@ -307,9 +322,6 @@ class _EcranDemarrageState extends State<_EcranDemarrage>
     final pin = context.watch<PinProvider>();
     if (!pin.pret) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    if (pin.verrouille) {
-      return const PinLockScreen();
     }
     return const AccueilScreen();
   }

@@ -15,7 +15,14 @@ abstract class StockageSecurise {
 }
 
 class _FlutterSecureStorageAdapter implements StockageSecurise {
-  static const _storage = FlutterSecureStorage();
+  // `resetOnError: false` est indispensable : par défaut, le plugin supprime
+  // la valeur stockée dès qu'une erreur de déchiffrement survient (Keystore
+  // invalidé, restauration système...). On préfère une lecture qui échoue,
+  // traitée en « stockage illisible » par PinProvider, à une disparition
+  // silencieuse du PIN qui ouvrirait l'application en grand.
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: false),
+  );
 
   @override
   Future<String?> lire(String cle) => _storage.read(key: cle);
@@ -34,7 +41,7 @@ class _FlutterSecureStorageAdapter implements StockageSecurise {
 /// de réinitialiser le PIN en cas d'oubli, sans jamais exposer l'ancien.
 class PinService {
   PinService({StockageSecurise? stockage})
-      : _stockage = stockage ?? _FlutterSecureStorageAdapter();
+    : _stockage = stockage ?? _FlutterSecureStorageAdapter();
 
   final StockageSecurise _stockage;
 

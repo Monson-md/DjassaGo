@@ -4,11 +4,15 @@
 import 'dart:io';
 
 import 'package:caisse_de_poche/main.dart';
+import 'package:caisse_de_poche/providers/pin_provider.dart';
 import 'package:caisse_de_poche/services/hive_service.dart';
+import 'package:caisse_de_poche/services/pin_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+import 'support/fake_stockage_securise.dart';
 
 class _FakePathProviderPlatform extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
@@ -35,9 +39,15 @@ void main() {
     }
   });
 
-  testWidgets("Affiche l'écran d'onboarding au premier lancement",
-      (WidgetTester tester) async {
-    await tester.pumpWidget(const CaisseDePocheApp());
+  testWidgets("Affiche l'écran d'onboarding au premier lancement", (
+    WidgetTester tester,
+  ) async {
+    final pin = PinProvider(
+      service: PinService(stockage: FakeStockageSecurise()),
+    );
+    addTearDown(pin.dispose);
+
+    await tester.pumpWidget(CaisseDePocheApp(pinProvider: pin));
     await tester.pumpAndSettle();
 
     expect(find.text('Bienvenue sur Caisse de Poche'), findsOneWidget);

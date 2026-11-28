@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Règles de sauvegarde pour Android 11 (API <= 30).
+
+  On laisse la sauvegarde Android active pour toutes les données Hive, mais
+  on exclut les préférences de flutter_secure_storage : elles sont chiffrées
+  par une clé du Keystore qui n'est pas sauvegardée. Les restaurer sur un
+  autre appareil provoquerait une erreur de déchiffrement (et, avec
+  resetOnError=true, la perte silencieuse du PIN).
+
+  Noms réels des fichiers dans flutter_secure_storage 10.3.1 :
+  - FlutterSecureStorage (données chiffrées)
+  - FlutterSecureKeyStorage (clé enveloppée)
+  - FlutterSecureStorageConfiguration:FlutterSecureStorage (marqueurs de
+    migration, préférences namespacées)
+  - FlutterSecureStorageConfiguration (ancien fichier de configuration)
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+    <exclude
+        domain="sharedpref"
+        path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration.xml" />
+</full-backup-content>

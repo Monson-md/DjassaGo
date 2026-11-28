@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Règles de sauvegarde pour Android 12+ (API >= 31).
+
+  Mêmes exclusions que backup_rules.xml, pour le cloud-backup ET le
+  device-transfer. Tout le reste (Hive) reste sauvegardé et transférable.
+  Conséquence assumée : sur un téléphone restauré, les données reviennent
+  mais pas le PIN ; l'utilisateur le recrée.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude
+            domain="sharedpref"
+            path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+        <exclude
+            domain="sharedpref"
+            path="FlutterSecureStorageConfiguration.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude
+            domain="sharedpref"
+            path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+        <exclude
+            domain="sharedpref"
+            path="FlutterSecureStorageConfiguration.xml" />
+    </device-transfer>
+</data-extraction-rules>

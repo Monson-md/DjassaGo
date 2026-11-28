@@ -3,21 +3,27 @@ import 'package:provider/provider.dart';
 
 import '../../providers/pin_provider.dart';
 
-/// Parcours « code PIN oublié » : vérifie la réponse à la question
-/// secrète définie à la création du PIN, puis permet d'en choisir un
-/// nouveau. Renvoie `true` via Navigator.pop si le PIN a été réinitialisé.
-class RecuperationPinSheet extends StatefulWidget {
-  const RecuperationPinSheet({super.key});
+/// Panneau « code PIN oublié » intégré au voile de verrouillage.
+///
+/// Il ne s'ouvre plus via `showModalBottomSheet` : le voile est au-dessus du
+/// Navigator racine et n'a pas de Navigator ancêtre. Le panneau appelle les
+/// mêmes méthodes du [PinProvider] que l'ancienne feuille (question,
+/// vérification de la réponse, réinitialisation).
+class RecuperationPinPanel extends StatefulWidget {
+  const RecuperationPinPanel({super.key, required this.onAnnuler});
+
+  final VoidCallback onAnnuler;
 
   @override
-  State<RecuperationPinSheet> createState() => _RecuperationPinSheetState();
+  State<RecuperationPinPanel> createState() => _RecuperationPinPanelState();
 }
 
-class _RecuperationPinSheetState extends State<RecuperationPinSheet> {
+class _RecuperationPinPanelState extends State<RecuperationPinPanel> {
   final _reponseController = TextEditingController();
   final _nouveauPinController = TextEditingController();
   final _confirmationController = TextEditingController();
   String? _question;
+  bool _questionIndisponible = false;
   bool _reponseValidee = false;
   String? _erreur;
   bool _enCours = false;
@@ -25,9 +31,21 @@ class _RecuperationPinSheetState extends State<RecuperationPinSheet> {
   @override
   void initState() {
     super.initState();
-    context.read<PinProvider>().question().then((q) {
-      if (mounted) setState(() => _question = q);
-    });
+    _chargerQuestion();
+  }
+
+  Future<void> _chargerQuestion() async {
+    try {
+      final question = await context.read<PinProvider>().question();
+      if (!mounted) return;
+      setState(() {
+        _question = question;
+        _questionIndisponible = question == null || question.isEmpty;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _questionIndisponible = true);
+    }
   }
 
   @override
@@ -43,18 +61,26 @@ class _RecuperationPinSheetState extends State<RecuperationPinSheet> {
       _enCours = true;
       _erreur = null;
     });
-    final ok = await context
-        .read<PinProvider>()
-        .verifierReponse(_reponseController.text);
-    if (!mounted) return;
-    setState(() {
-      _enCours = false;
-      if (ok) {
-        _reponseValidee = true;
-      } else {
-        _erreur = 'Réponse incorrecte.';
-      }
-    });
+    try {
+      final ok = await context.read<PinProvider>().verifierReponse(
+        _reponseController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _enCours = false;
+        if (ok) {
+          _reponseValidee = true;
+        } else {
+          _erreur = 'Réponse incorrecte.';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _enCours = false;
+        _erreur = 'Stockage sécurisé indisponible.';
+      });
+    }
   }
 
   Future<void> _validerNouveauPin() async {
@@ -72,76 +98,113 @@ class _RecuperationPinSheetState extends State<RecuperationPinSheet> {
       _enCours = true;
       _erreur = null;
     });
-    await context.read<PinProvider>().reinitialiserPinAvecReponse(pin);
-    if (!mounted) return;
-    Navigator.of(context).pop(true);
+    try {
+      await context.read<PinProvider>().reinitialiserPinAvecReponse(pin);
+      if (!mounted) return;
+      // Le provider a normalement déjà retiré le voile. S'il est resté
+      // verrouillé (application en arrière-plan pendant l'écriture), on
+      // revient à la saisie du PIN pour que le nouveau code soit utilisable.
+      widget.onAnnuler();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _enCours = false;
+        _erreur = 'Stockage sécurisé indisponible.';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              _reponseValidee ? 'Nouveau code PIN' : 'Code PIN oublié',
-              style: Theme.of(context).textTheme.titleLarge,
+    final questionChargee = _question != null && !_questionIndisponible;
+    final boutonActif =
+        !_enCours &&
+        (_reponseValidee || (questionChargee && _question != null));
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 12,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: _enCours ? null : widget.onAnnuler,
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Retour',
+              ),
+              Expanded(
+                child: Text(
+                  _reponseValidee ? 'Nouveau code PIN' : 'Code PIN oublié',
+                  style: Theme.of(context).textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(width: 48),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_questionIndisponible) ...[
+            const Text(
+              'Récupération indisponible : le stockage sécurisé est '
+              'illisible.',
+              style: TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
             ),
+          ] else if (!_reponseValidee) ...[
+            Text(_question ?? '...'),
             const SizedBox(height: 12),
-            if (!_reponseValidee) ...[
-              Text(_question ?? '...'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _reponseController,
-                decoration: const InputDecoration(labelText: 'Votre réponse'),
-                autofocus: true,
+            TextField(
+              controller: _reponseController,
+              decoration: const InputDecoration(labelText: 'Votre réponse'),
+              autofocus: true,
+            ),
+          ] else ...[
+            TextField(
+              controller: _nouveauPinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 6,
+              decoration: const InputDecoration(labelText: 'Nouveau code PIN'),
+            ),
+            TextField(
+              controller: _confirmationController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 6,
+              decoration: const InputDecoration(
+                labelText: 'Confirmer le code PIN',
               ),
-            ] else ...[
-              TextField(
-                controller: _nouveauPinController,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 6,
-                decoration:
-                    const InputDecoration(labelText: 'Nouveau code PIN'),
-              ),
-              TextField(
-                controller: _confirmationController,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 6,
-                decoration:
-                    const InputDecoration(labelText: 'Confirmer le code PIN'),
-              ),
-            ],
-            if (_erreur != null) ...[
-              const SizedBox(height: 4),
-              Text(_erreur!, style: const TextStyle(color: Colors.red)),
-            ],
+            ),
+          ],
+          if (_erreur != null) ...[
+            const SizedBox(height: 4),
+            Text(_erreur!, style: const TextStyle(color: Colors.red)),
+          ],
+          if (!_questionIndisponible) ...[
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _enCours
-                  ? null
-                  : (_reponseValidee ? _validerNouveauPin : _validerReponse),
+              onPressed: boutonActif
+                  ? (_reponseValidee ? _validerNouveauPin : _validerReponse)
+                  : null,
               child: _enCours
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child:
-                          CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Text(_reponseValidee ? 'Valider' : 'Continuer'),
             ),
           ],
-        ),
+        ],
       ),
     );
   }

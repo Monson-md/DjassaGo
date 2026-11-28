@@ -45,8 +45,9 @@ class _CreationPinScreenState extends State<CreationPinScreen> {
       return;
     }
     if (question.isEmpty || reponse.isEmpty) {
-      setState(() =>
-          _erreur = 'La question secrète et sa réponse sont requises.');
+      setState(
+        () => _erreur = 'La question secrète et sa réponse sont requises.',
+      );
       return;
     }
 
@@ -54,9 +55,20 @@ class _CreationPinScreenState extends State<CreationPinScreen> {
       _enCours = true;
       _erreur = null;
     });
-    await context
-        .read<PinProvider>()
-        .definirPin(pin, question: question, reponse: reponse);
+    try {
+      await context.read<PinProvider>().definirPin(
+        pin,
+        question: question,
+        reponse: reponse,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _enCours = false;
+        _erreur = 'Stockage sécurisé indisponible.';
+      });
+      return;
+    }
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -85,14 +97,18 @@ class _CreationPinScreenState extends State<CreationPinScreen> {
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'Code PIN (4 à 6 chiffres)'),
+                decoration: const InputDecoration(
+                  labelText: 'Code PIN (4 à 6 chiffres)',
+                ),
               ),
               TextField(
                 controller: _confirmationController,
                 keyboardType: TextInputType.number,
                 obscureText: true,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'Confirmer le code PIN'),
+                decoration: const InputDecoration(
+                  labelText: 'Confirmer le code PIN',
+                ),
               ),
               const SizedBox(height: 12),
               const Text(
@@ -126,7 +142,9 @@ class _CreationPinScreenState extends State<CreationPinScreen> {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('Activer le verrouillage'),
               ),

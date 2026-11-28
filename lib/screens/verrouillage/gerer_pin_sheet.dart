@@ -45,15 +45,26 @@ class _GererPinSheetState extends State<GererPinSheet> {
       _enCours = true;
       _erreur = null;
     });
-    final ok = await context
-        .read<PinProvider>()
-        .changerPin(_pinActuelController.text.trim(), pin);
+    final bool ok;
+    try {
+      ok = await context.read<PinProvider>().changerPin(
+        _pinActuelController.text.trim(),
+        pin,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _enCours = false;
+        _erreur = 'Stockage sécurisé indisponible.';
+      });
+      return;
+    }
     if (!mounted) return;
     if (ok) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Code PIN mis à jour')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Code PIN mis à jour')));
     } else {
       setState(() {
         _enCours = false;
@@ -67,15 +78,25 @@ class _GererPinSheetState extends State<GererPinSheet> {
       _enCours = true;
       _erreur = null;
     });
-    final ok = await context
-        .read<PinProvider>()
-        .desactiverVerrouillage(_pinActuelController.text.trim());
+    final bool ok;
+    try {
+      ok = await context.read<PinProvider>().desactiverVerrouillage(
+        _pinActuelController.text.trim(),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _enCours = false;
+        _erreur = 'Stockage sécurisé indisponible.';
+      });
+      return;
+    }
     if (!mounted) return;
     if (ok) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verrouillage désactivé')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Verrouillage désactivé')));
     } else {
       setState(() {
         _enCours = false;
@@ -89,8 +110,10 @@ class _GererPinSheetState extends State<GererPinSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Verrouillage par code PIN',
-            style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          'Verrouillage par code PIN',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 16),
         ListTile(
           leading: const Icon(Icons.password),
@@ -137,8 +160,9 @@ class _GererPinSheetState extends State<GererPinSheet> {
             keyboardType: TextInputType.number,
             obscureText: true,
             maxLength: 6,
-            decoration:
-                const InputDecoration(labelText: 'Confirmer le nouveau code'),
+            decoration: const InputDecoration(
+              labelText: 'Confirmer le nouveau code',
+            ),
           ),
         ],
         if (_erreur != null) ...[
@@ -147,8 +171,7 @@ class _GererPinSheetState extends State<GererPinSheet> {
         ],
         const SizedBox(height: 16),
         FilledButton(
-          onPressed:
-              _enCours ? null : (changement ? _changerPin : _desactiver),
+          onPressed: _enCours ? null : (changement ? _changerPin : _desactiver),
           style: changement
               ? null
               : FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -157,7 +180,9 @@ class _GererPinSheetState extends State<GererPinSheet> {
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : Text(changement ? 'Valider' : 'Désactiver'),
         ),
