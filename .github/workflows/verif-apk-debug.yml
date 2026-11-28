@@ -3,8 +3,8 @@ name: Verif APK debug
 # Verification uniquement : compile un APK debug sur les branches de test.
 # Aucun secret, aucun keystore, aucune release, aucun deploiement.
 # Declencheur limite aux branches test/** (pas de main, pas de PR, pas de tag).
-# Pas de workflow_dispatch : il exigerait que ce fichier existe sur la
-# branche par defaut.
+# L'APK est construit et publie AVANT les tests : un test en echec ne doit
+# pas empecher de recuperer l'APK. Les tests restent bloquants pour le job.
 
 on:
   push:
@@ -23,10 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Versions reprises telles quelles de .github/workflows/build_apk.yml
-      # (lignes 13-17). Ce workflow n'installe pas Java explicitement : il
-      # s'appuie sur le JDK preinstalle de l'image ubuntu-latest, comme le
-      # workflow "Build APK" existant.
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.6'
@@ -37,8 +33,6 @@ jobs:
 
       - run: flutter analyze
 
-      - run: flutter test
-
       - run: flutter build apk --debug
 
       - uses: actions/upload-artifact@v4
@@ -47,3 +41,5 @@ jobs:
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
           if-no-files-found: error
+
+      - run: flutter test --reporter expanded
